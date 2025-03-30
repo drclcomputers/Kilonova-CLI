@@ -8,8 +8,9 @@ import (
 
 // rootCmd represents the base command when called without any subcommands
 var rootCmd = &cobra.Command{
-	Use:   "kilocli",
-	Short: "A CLI client for the competitive programming platform Kilonova ",
+	Use:     "kilocli",
+	Version: "v0.1.0",
+	Short:   "A CLI client for the competitive programming platform Kilonova ",
 	Long: `Kilonova-CLI is a command-line interface (CLI) client designed for interacting 
 with the Kilonova competitive programming platform. It enables users to view statements, 
 search for problems, submit solutions, and retrieve submission results directly from 
