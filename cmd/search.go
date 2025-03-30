@@ -20,7 +20,7 @@ type Problem struct {
 }
 
 var searchCmd = &cobra.Command{
-	Use:   "search [ID or NAME]",
+	Use:   "search [ID, NAME or nf (all problems available)]",
 	Short: "Search for problems by ID or name.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
