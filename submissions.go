@@ -182,7 +182,7 @@ func uploadCode() {
 		if err != nil {
 			logErr(err)
 		}
-		fmt.Printf("Status: %s\nMessage: %s", dataerr.Status, dataerr.Data)
+		fmt.Printf("Status: %s\nMessage: %s\n", dataerr.Status, dataerr.Data)
 	}
-	fmt.Printf("Status: %s\nSubmission ID: %d", data.Status, data.Data)
+	fmt.Printf("Status: %s\nSubmission ID: %d\n", data.Status, data.Data)
 }

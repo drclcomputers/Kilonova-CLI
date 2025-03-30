@@ -15,6 +15,7 @@ type search struct {
 			Id             int    `json:"id"`
 			Name           string `json:"name"`
 			Source_Credits string `json:"source_credits"`
+			Max_Score      int    `json:"max_score"`
 		}
 	} `json:"data"`
 }
@@ -59,7 +60,7 @@ func searchProblems() {
 
 	cnt := data.Data.Count
 	fmt.Println(cnt, "problems found!")
-	fmt.Println("Id  |  Name  |  Source")
+	fmt.Println("Id  |  Name  |  Source  |  Max Score")
 	for offset := 0; offset < data.Data.Count; offset += 50 {
 		searchData["offset"] = offset
 
@@ -79,7 +80,10 @@ func searchProblems() {
 		}
 
 		for _, problem := range data.Data.Problems {
-			fmt.Printf("%-4d | %-30s | %s\n", problem.Id, problem.Name, problem.Source_Credits)
+			if problem.Max_Score == -1 {
+				problem.Max_Score = 0
+			}
+			fmt.Printf("%d  |  %s |  %s  |  %d\n", problem.Id, problem.Name, problem.Source_Credits, problem.Max_Score)
 		}
 	}
 }
