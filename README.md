@@ -42,7 +42,7 @@ This command uses the credentials provided to log in.
 To search for problems containing a specific keyword:
 
 ```sh
-<PROGRAM> search <NAME or ID>
+<PROGRAM> search <NAME, ID or nf (all of the problems available)>
 ```
 
 
