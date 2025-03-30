@@ -45,7 +45,7 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	}
 
 	var token string
-	if use_case != "3" && use_case != "2" && use_case != "0" {
+	if use_case != "3" && use_case != "0" {
 		token = readToken()
 	}
 
