@@ -35,26 +35,19 @@ func formatText(decodedtext string) string {
 		decodedtext = strings.ReplaceAll(decodedtext, old, new)
 	}
 
-	re := regexp.MustCompile(`\\text{(.*?)}`)
-	decodedtext = re.ReplaceAllString(decodedtext, "$1")
+	replacementsRegex := []string{
+		`\\text{(.*?)}`,
+		`\\texttt{(.*?)}`,
+		`\\bm{(.*?)}`,
+		`\\textit{(.*?)}`,
+		`\\rule\{[^}]+\}\{[^}]+\}`,
+		`~\[([^\]]+)\]`,
+	}
 
-	re = regexp.MustCompile(`\\texttt{(.*?)}`)
-	decodedtext = re.ReplaceAllString(decodedtext, "$1")
-
-	re = regexp.MustCompile(`\\bm{(.*?)}`)
-	decodedtext = re.ReplaceAllString(decodedtext, "$1")
-
-	re = regexp.MustCompile(`\\textit{(.*?)}`)
-	decodedtext = re.ReplaceAllString(decodedtext, "$1")
-
-	re = regexp.MustCompile(`\\rule\{[^}]+\}\{[^}]+\}`)
-	decodedtext = re.ReplaceAllString(decodedtext, "$1")
-
-	re = regexp.MustCompile(`~\[([^\]]+)\]`)
-	decodedtext = re.ReplaceAllString(decodedtext, "Error: Unable to show photo! View in browser.")
-
-	re = regexp.MustCompile(`^([^\|]+)`)
-	decodedtext = re.ReplaceAllString(decodedtext, "$1")
+	for _, pattern := range replacementsRegex {
+		re := regexp.MustCompile(pattern)
+		decodedtext = re.ReplaceAllString(decodedtext, "$1")
+	}
 
 	return decodedtext
 }
@@ -90,21 +83,27 @@ func printStatement() {
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
+		return
 	}
 
 	var info info
 	if err := json.Unmarshal(body, &info); err != nil {
 		logErr(err)
+		return
 	}
-	fmt.Printf("\nName: %s\nID: #%s\nTime Limit: %.2fs\nMemory Limit: %dKB\nSource Size: %dKB\nCredits: %s\n", info.Data.Name, id, info.Data.Time, info.Data.MemoryLimit, info.Data.SourceSize, info.Data.SourceCredits)
+	fmt.Printf("\nName: %s\nID: #%s\nTime Limit: %.2fs\nMemory Limit: %dKB\nSource Size: %dKB\nCredits: %s\n",
+		info.Data.Name, id, info.Data.Time, info.Data.MemoryLimit,
+		info.Data.SourceSize, info.Data.SourceCredits)
 
 	renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"))
 	if err != nil {
 		logErr(err)
+		return
 	}
 	rendered, err := renderer.Render("# Statement")
 	if err != nil {
 		logErr(err)
+		return
 	}
 	fmt.Println(rendered)
 
@@ -117,6 +116,7 @@ func printStatement() {
 	body, err = makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
+		return
 	}
 
 	if strings.Contains(string(body), "\"status\":\"error\"") {
@@ -126,21 +126,19 @@ func printStatement() {
 	var data statement
 	if err := json.Unmarshal(body, &data); err != nil {
 		logErr(err)
+		return
 	}
 	text, err := b64.StdEncoding.DecodeString(data.Data.Data)
 	if err != nil {
 		logErr(err)
+		return
 	}
-	decodedtext := string(text)
+	decodedtext := formatText(string(text))
 
-	decodedtext = formatText(decodedtext)
-
-	if err != nil {
-		logErr(err)
-	}
 	rendered, err = renderer.Render(decodedtext)
 	if err != nil {
 		logErr(err)
+		return
 	}
 	fmt.Println(rendered)
 }

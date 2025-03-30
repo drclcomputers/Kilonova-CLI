@@ -35,17 +35,18 @@ type submissionlist struct {
 
 func printSubmissions() {
 	//get user id
-	url := URL_SELF
 
 	jsonData := []byte(`{"key": "value"}`)
-	body, err := makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
+	body, err := makeRequest("GET", URL_SELF, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
 		logErr(err)
+		return
 	}
 
 	var data userid
 	if err := json.Unmarshal(body, &data); err != nil {
 		logErr(err)
+		return
 	}
 
 	id := data.Data.ID
@@ -56,27 +57,36 @@ func printSubmissions() {
 		os.Exit(1)
 	}
 
-	url = fmt.Sprintf(URL_SUBMISSION_LIST, os.Args[2], id)
+	url := fmt.Sprintf(URL_SUBMISSION_LIST, os.Args[2], id)
 
 	body, err = makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
 		logErr(err)
+		return
 	}
 
 	var datasub submissionlist
 	if err := json.Unmarshal(body, &datasub); err != nil {
 		logErr(err)
+		return
 	}
 
 	fmt.Println("Nr.  |  ID  |  Time  |  Language |  Score")
 
 	for i := range datasub.Data.Count {
-		parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.Submissions[i].Created_at)
+		parsedTime, err := time.Parse(time.RFC3339Nano,
+			datasub.Data.Submissions[i].Created_at)
 		formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+
 		if err != nil {
 			logErr(err)
+			return
 		}
-		fmt.Printf("%d.  |  %d  |  %s  |  %s  |  %d\n", i+1, datasub.Data.Submissions[i].Id, formattedTime, datasub.Data.Submissions[i].Language, datasub.Data.Submissions[i].Score)
+
+		fmt.Printf("%d.  |  %d  |  %s  |  %s  |  %d\n",
+			i+1, datasub.Data.Submissions[i].Id, formattedTime,
+			datasub.Data.Submissions[i].Language,
+			datasub.Data.Submissions[i].Score)
 	}
 
 }

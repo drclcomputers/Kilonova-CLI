@@ -4,77 +4,65 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	u "net/url"
 	"os"
-	"strings"
 )
 
 // login
-type signin struct {
+type signInResp struct {
 	Status string `json:"status"`
 	Data   string `json:"data"`
 }
 
 func login() {
-	url := URL_LOGIN
-
-	var username, password string
-
-	if len(os.Args) == 4 {
-		username = os.Args[2]
-		password = os.Args[3]
-	} else {
-		fmt.Println("Insert both credintials!")
-		os.Exit(1)
+	if len(os.Args) < 4 {
+		log.Fatal("Insert both credintials or too many arguments were passed!")
 	}
 
-	formData := u.Values{}
-	formData.Set("username", username)
-	formData.Set("password", password)
+	username := os.Args[2]
+	password := os.Args[3]
 
-	body, err := makeRequest("POST", url, bytes.NewBufferString(formData.Encode()), "3")
+	formData := u.Values{
+		"username": {username},
+		"password": {password},
+	}
+
+	body, err := makeRequest("POST", URL_LOGIN, bytes.NewBufferString(formData.Encode()), "3")
 	if err != nil {
-		logErr(err)
+		log.Fatalf("Login failed: %v", err)
 	}
 
-	if strings.Contains(string(body), "success") {
-		fmt.Println("Login successful!")
-	} else {
-		fmt.Println("Login failed. Invalid credentials!")
+	if !bytes.Contains(body, []byte("success")) {
+		log.Fatal("Login failed: Invalid credentials!")
 	}
 
-	var signin signin
-	if err := json.Unmarshal(body, &signin); err != nil {
-		fmt.Printf("error unmarshalling response: %s", err)
-		os.Exit(1)
+	var response signInResp
+	if err := json.Unmarshal(body, &response); err != nil {
+		log.Fatalf("Error parsing response: %v", err)
 	}
 
-	token := signin.Data
-
-	err = os.WriteFile("./token", []byte(token), 0644)
-	if err != nil {
-		fmt.Println("error writing auth token to file! Err: ", err)
-		os.Exit(1)
+	if err := os.WriteFile("./token", []byte(response.Data), 0644); err != nil {
+		log.Fatalf("Error writing auth token to file: %v", err)
 	}
+
+	fmt.Println("Login successful!")
 
 }
 
 // logout
 func logout() {
-	url := URL_LOGOUT
-
 	jsonData := []byte(`{"key": "value"}`)
-	body, err := makeRequest("POST", url, bytes.NewBuffer(jsonData), "1")
+	body, err := makeRequest("POST", URL_LOGOUT, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
 		logErr(err)
+		return
 	}
 
-	//fmt.Println(string(body))
-
-	if strings.Contains(string(body), "success") {
-		fmt.Println("Logged out succesfully!")
-		os.WriteFile("token", []byte(""), 0644)
+	if bytes.Contains(body, []byte("success")) {
+		fmt.Println("Logged out successfully!")
+		_ = os.Remove("token")
 	} else {
-		fmt.Println("Logged out failed! You have to be logged in to do this!")
+		log.Println("Logout failed: You must be logged in to do this!")
 	}
 }

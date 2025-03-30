@@ -21,10 +21,9 @@ type search struct {
 
 func searchProblems() {
 	problem_name := ""
-	if len(os.Args) == 3 {
+	if len(os.Args) >= 3 {
 		problem_name = os.Args[2]
 	}
-	url := URL_SEARCH
 
 	searchData := map[string]interface{}{
 		"name_fuzzy": problem_name,
@@ -36,7 +35,7 @@ func searchProblems() {
 		fmt.Println("Error marshaling JSON:", err)
 	}
 
-	body, err := makeRequest("POST", url, bytes.NewBuffer(jsonData), "2")
+	body, err := makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
 	if err != nil {
 		logErr(err)
 	}
@@ -48,42 +47,39 @@ func searchProblems() {
 		os.Exit(1)
 	}
 
+	if data.Data.Count == 0 {
+		fmt.Println("No problems found.")
+		return
+	}
+
 	pages := data.Data.Count / 50
 	if data.Data.Count%50 != 0 {
 		pages++
 	}
 
 	cnt := data.Data.Count
-	if cnt == 0 {
-		fmt.Println("No problems found")
-	} else {
-		fmt.Println(cnt, "problems found!")
-		fmt.Println("Id  |  Name  |  Source")
-		for p := 0; p < pages; p++ {
-			searchData["offset"] = p * 50
+	fmt.Println(cnt, "problems found!")
+	fmt.Println("Id  |  Name  |  Source")
+	for offset := 0; offset < data.Data.Count; offset += 50 {
+		searchData["offset"] = offset
 
-			jsonData, err := json.Marshal(searchData)
-			if err != nil {
-				logErr(err)
-			}
+		jsonData, err := json.Marshal(searchData)
+		if err != nil {
+			logErr(err)
+		}
 
-			body, err = makeRequest("POST", url, bytes.NewBuffer(jsonData), "2")
-			if err != nil {
-				logErr(err)
-			}
+		body, err = makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
+		if err != nil {
+			logErr(err)
+		}
 
-			err = json.Unmarshal(body, &data)
-			if err != nil {
-				logErr(err)
-			}
+		err = json.Unmarshal(body, &data)
+		if err != nil {
+			logErr(err)
+		}
 
-			cntpag := len(data.Data.Problems)
-			if p == pages-1 {
-				cntpag = cnt % 50
-			}
-			for i := 0; i < cntpag; i++ {
-				fmt.Println(data.Data.Problems[i].Id, "  |  ", data.Data.Problems[i].Name, "  |  ", data.Data.Problems[i].Source_Credits)
-			}
+		for _, problem := range data.Data.Problems {
+			fmt.Printf("%-4d | %-30s | %s\n", problem.Id, problem.Name, problem.Source_Credits)
 		}
 	}
 }
