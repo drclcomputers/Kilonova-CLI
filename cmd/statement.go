@@ -1,16 +1,29 @@
-package main
+package cmd
 
 import (
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"log"
-	"os"
 	"regexp"
 	"strings"
 
 	"github.com/charmbracelet/glamour"
+	"github.com/spf13/cobra"
 )
+
+var printStatementCmd = &cobra.Command{
+	Use:   "statement [ID] [RO or EN]",
+	Short: "Print problem statement in chosen language",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		printStatement(args[0], args[1])
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(printStatementCmd)
+}
 
 func formatText(decodedtext string) string {
 	replacements := map[string]string{
@@ -70,13 +83,7 @@ type statement struct {
 	} `json:"data"`
 }
 
-func printStatement() {
-	if len(os.Args) < 4 {
-		fmt.Println("Usage: <program> -statement <ID> <RO or EN>")
-		os.Exit(1)
-	}
-	id := os.Args[2]
-	language := os.Args[3]
+func printStatement(id, language string) {
 
 	//info
 	url := fmt.Sprintf(URL_PROBLEM, id)

@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"bytes"
@@ -7,21 +7,38 @@ import (
 	"log"
 	u "net/url"
 	"os"
+
+	"github.com/spf13/cobra"
 )
 
-// login
 type signInResp struct {
 	Status string `json:"status"`
 	Data   string `json:"data"`
 }
 
-func login() {
-	if len(os.Args) < 4 {
-		log.Fatal("Insert both credintials or too many arguments were passed!")
-	}
+var signinCmd = &cobra.Command{
+	Use:   "signin [username] [password]",
+	Short: "Sign in to your account",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		login(args[0], args[1])
+	},
+}
 
-	username := os.Args[2]
-	password := os.Args[3]
+var logoutCmd = &cobra.Command{
+	Use:   "logout",
+	Short: "Log out of your account",
+	Run: func(cmd *cobra.Command, args []string) {
+		logout()
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(signinCmd)
+	rootCmd.AddCommand(logoutCmd)
+}
+
+func login(username, password string) {
 
 	formData := u.Values{
 		"username": {username},

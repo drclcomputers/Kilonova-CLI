@@ -1,11 +1,26 @@
-package main
+package cmd
 
 import (
 	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
+
+	"github.com/spf13/cobra"
 )
+
+var searchCmd = &cobra.Command{
+	Use:   "search [ID]",
+	Short: "Search for problems by ID or name.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		searchProblems(args[0])
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(searchCmd)
+}
 
 // search problems
 type search struct {
@@ -20,10 +35,9 @@ type search struct {
 	} `json:"data"`
 }
 
-func searchProblems() {
-	problem_name := ""
-	if len(os.Args) >= 3 {
-		problem_name = os.Args[2]
+func searchProblems(problem_name string) {
+	if problem_name == "nf" {
+		problem_name = ""
 	}
 
 	searchData := map[string]interface{}{

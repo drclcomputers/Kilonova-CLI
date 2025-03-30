@@ -1,4 +1,4 @@
-package main
+package cmd
 
 import (
 	"bytes"
@@ -8,7 +8,42 @@ import (
 	"mime/multipart"
 	"os"
 	"time"
+
+	"github.com/spf13/cobra"
 )
+
+var uploadCodeCmd = &cobra.Command{
+	Use:   "submit [ID] [LANGUAGE] [FILENAME]",
+	Short: "Submit solution to problem.",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		uploadCode(args[0], args[1], args[2])
+	},
+}
+
+var checkLangsCmd = &cobra.Command{
+	Use:   "langs [ID]",
+	Short: "View available languages for solutions.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		checklangs(args[0])
+	},
+}
+
+var printSubmissionsCmd = &cobra.Command{
+	Use:   "submissions [ID]",
+	Short: "View sent submissions to a problem.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		printSubmissions(args[0])
+	},
+}
+
+func init() {
+	rootCmd.AddCommand(checkLangsCmd)
+	rootCmd.AddCommand(uploadCodeCmd)
+	rootCmd.AddCommand(printSubmissionsCmd)
+}
 
 // print submissions
 type userid struct {
@@ -33,7 +68,7 @@ type submissionlist struct {
 	} `json:"data"`
 }
 
-func printSubmissions() {
+func printSubmissions(problem_id string) {
 	//get user id
 
 	jsonData := []byte(`{"key": "value"}`)
@@ -49,15 +84,11 @@ func printSubmissions() {
 		return
 	}
 
-	id := data.Data.ID
+	user_id := data.Data.ID
 
 	//get submissions on problem
-	if len(os.Args) < 3 {
-		fmt.Println("Usage: <program> -submissions <problem_id>")
-		os.Exit(1)
-	}
 
-	url := fmt.Sprintf(URL_SUBMISSION_LIST, os.Args[2], id)
+	url := fmt.Sprintf(URL_SUBMISSION_LIST, problem_id, user_id)
 
 	body, err = makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
@@ -108,13 +139,9 @@ type langs struct {
 	} `json:"data"`
 }
 
-func checklangs() {
-	if len(os.Args) < 3 {
-		fmt.Printf("Usage: <program> -langs <problem_id>")
-		os.Exit(1)
-	}
+func checklangs(problem_id string) {
 	//get languages
-	url := fmt.Sprintf(URL_LANGS_PB, os.Args[2])
+	url := fmt.Sprintf(URL_LANGS_PB, problem_id)
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
@@ -131,19 +158,8 @@ func checklangs() {
 	}
 }
 
-func uploadCode() {
-
-	if len(os.Args) < 5 {
-		fmt.Println("Usage: <program> -upload <problem_id> <language> <filename>")
-		os.Exit(1)
-	}
-
+func uploadCode(id, lang, file string) {
 	//upload code
-	url := URL_SUBMIT
-
-	id := os.Args[2]
-	lang := os.Args[3]
-	file := os.Args[4]
 
 	codeFile, err := os.Open(file)
 	if err != nil {
@@ -169,7 +185,7 @@ func uploadCode() {
 
 	writer.Close()
 
-	body, err := makeRequest("POST", url, io.Reader(&requestBody), string(writer.FormDataContentType()))
+	body, err := makeRequest("POST", URL_SUBMIT, io.Reader(&requestBody), string(writer.FormDataContentType()))
 	if err != nil {
 		logErr(err)
 	}
