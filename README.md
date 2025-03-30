@@ -5,7 +5,7 @@ Kilonova-CLI is a command-line interface (CLI) client designed for interacting w
 ## Features
 
 - **User Authentication**: Log in to your Kilonova account securely from the CLI.
-- **Problem Search**: Find programming problems by keywords or categories.
+- **Problem Search**: Find programming problems by keywords or IDs.
 - **Solution Submission**: Submit your code solutions to Kilonova problems.
 - **Submission Status**: Check the results and status of your submissions.
 
