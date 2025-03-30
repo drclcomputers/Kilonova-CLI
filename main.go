@@ -5,8 +5,6 @@ import (
 	"os"
 )
 
-const help = "Kilonova CLI - ver 0.0.9\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-statement <PROBLEM ID>\n-logout"
-
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Println(help)

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"io"
 	"mime/multipart"
-	"net/http"
 	"os"
 	"time"
 )
@@ -36,40 +35,17 @@ type submissionlist struct {
 
 func printSubmissions() {
 	//get user id
-	url := "https://kilonova.ro/api/user/self/"
-	token, err := os.ReadFile("token")
-	if err != nil || string(token) == "" {
-		fmt.Println("Could not read session ID from file. Make sure you are logged in!")
-		os.Exit(1)
-	}
+	url := URL_SELF
 
 	jsonData := []byte(`{"key": "value"}`)
-	req, err := http.NewRequest("GET", url, bytes.NewBuffer(jsonData))
+	body, err := makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
-	}
-	req.Header.Set("User-Agent", "KilonovaCLIClient/1.0")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", string(token))
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Error reading response body: %s", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	var data userid
 	if err := json.Unmarshal(body, &data); err != nil {
-		fmt.Printf("error unmarshalling response: %s", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	id := data.Data.ID
@@ -80,34 +56,16 @@ func printSubmissions() {
 		os.Exit(1)
 	}
 
-	url = fmt.Sprintf("https://kilonova.ro/api/submissions/get?ascending=false&limit=500&offset=0&ordering=id&problem_id=%s&user_id=%d", os.Args[2], id)
+	url = fmt.Sprintf(URL_SUBMISSION_LIST, os.Args[2], id)
 
-	req, err = http.NewRequest("GET", url, bytes.NewBuffer(jsonData))
+	body, err = makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
-	}
-	req.Header.Set("User-Agent", "KilonovaCLIClient/1.0")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", string(token))
-
-	client = &http.Client{}
-	resp, err = client.Do(req)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	defer resp.Body.Close()
-
-	body, err = io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Error reading response body: %s", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	var datasub submissionlist
 	if err := json.Unmarshal(body, &datasub); err != nil {
-		fmt.Printf("error unmarshalling response: %s", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	fmt.Println("Nr.  |  ID  |  Time  |  Language |  Score")
@@ -116,8 +74,7 @@ func printSubmissions() {
 		parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.Submissions[i].Created_at)
 		formattedTime := parsedTime.Format("2006-01-02 15:04:05")
 		if err != nil {
-			fmt.Printf("Could not parse time %s", err)
-			os.Exit(1)
+			logErr(err)
 		}
 		fmt.Printf("%d.  |  %d  |  %s  |  %s  |  %d\n", i+1, datasub.Data.Submissions[i].Id, formattedTime, datasub.Data.Submissions[i].Language, datasub.Data.Submissions[i].Score)
 	}
@@ -147,18 +104,10 @@ func checklangs() {
 		os.Exit(1)
 	}
 	//get languages
-	url := fmt.Sprintf("https://kilonova.ro/api/problem/%s/languages", os.Args[2])
-	resp, err := http.Get(url)
+	url := fmt.Sprintf(URL_LANGS_PB, os.Args[2])
+	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
-		fmt.Printf("error fetching data: %s", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("error reading response body: %s", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	var langs langs
@@ -180,7 +129,7 @@ func uploadCode() {
 	}
 
 	//upload code
-	url := "https://kilonova.ro/api/submissions/submit"
+	url := URL_SUBMIT
 
 	id := os.Args[2]
 	lang := os.Args[3]
@@ -188,8 +137,7 @@ func uploadCode() {
 
 	codeFile, err := os.Open(file)
 	if err != nil {
-		fmt.Println("Error reading file:", err)
-		os.Exit(1)
+		logErr(err)
 	}
 	defer codeFile.Close()
 
@@ -202,45 +150,18 @@ func uploadCode() {
 
 	fileWriter, err := writer.CreateFormFile("code", file)
 	if err != nil {
-		fmt.Println("Error creating form file:", err)
-		os.Exit(1)
+		logErr(err)
 	}
 	_, err = io.Copy(fileWriter, codeFile)
 	if err != nil {
-		fmt.Println("Error copying file:", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	writer.Close()
 
-	req, err := http.NewRequest("POST", url, &requestBody)
+	body, err := makeRequest("POST", url, io.Reader(&requestBody), string(writer.FormDataContentType()))
 	if err != nil {
-		fmt.Println("Error creating request:", err)
-		os.Exit(1)
-	}
-
-	req.Header.Set("User-Agent", "KilonovaCLIClient/1.0")
-	req.Header.Set("Content-Type", writer.FormDataContentType())
-
-	token, err := os.ReadFile("token")
-	if err != nil {
-		fmt.Println("Not logged in! Please sign in!")
-		os.Exit(1)
-	}
-	req.Header.Set("Authorization", string(token))
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error sending request:", err)
-		os.Exit(1)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Println("Error reading response body:", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
 	var data submit
@@ -249,8 +170,7 @@ func uploadCode() {
 		var dataerr submiterr
 		err = json.Unmarshal(body, &dataerr)
 		if err != nil {
-			fmt.Println("Error unmarshalling json file. Err: ", err)
-			os.Exit(1)
+			logErr(err)
 		}
 		fmt.Printf("Status: %s\nMessage: %s", dataerr.Status, dataerr.Data)
 	}

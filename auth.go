@@ -4,10 +4,9 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
 	u "net/url"
 	"os"
+	"strings"
 )
 
 // login
@@ -17,7 +16,7 @@ type signin struct {
 }
 
 func login() {
-	url := "https://kilonova.ro/api/auth/login"
+	url := URL_LOGIN
 
 	var username, password string
 
@@ -33,33 +32,15 @@ func login() {
 	formData.Set("username", username)
 	formData.Set("password", password)
 
-	req, err := http.NewRequest("POST", url, bytes.NewBufferString(formData.Encode()))
+	body, err := makeRequest("POST", url, bytes.NewBufferString(formData.Encode()), "1")
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
-	}
-	req.Header.Set("User-Agent", "KilonovaCLIClient/1.0")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", "guest")
-
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	defer resp.Body.Close()
-
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("Error reading response body: %s", err)
-		os.Exit(1)
+		logErr(err)
 	}
 
-	if resp.StatusCode == http.StatusOK {
+	if strings.Contains(string(body), "success") {
 		fmt.Println("Login successful!")
 	} else {
-		fmt.Println("Login failed.")
-		os.Exit(1)
+		fmt.Println("Login failed. Invalid credentials!")
 	}
 
 	var signin signin
@@ -80,36 +61,20 @@ func login() {
 
 // logout
 func logout() {
-	url := "https://kilonova.ro/api/auth/logout"
-
-	token, err := os.ReadFile("token")
-	if err != nil {
-		fmt.Println("Could not read session ID from file. Make sure you are logged in!")
-		os.Exit(1)
-	}
+	url := URL_LOGOUT
 
 	jsonData := []byte(`{"key": "value"}`)
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(jsonData))
+	body, err := makeRequest("POST", url, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
-		fmt.Println("Error: ", err)
-		return
+		logErr(err)
 	}
-	req.Header.Set("User-Agent", "KilonovaCLIClient/1.0")
-	req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	req.Header.Set("Authorization", string(token))
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
-	if err != nil {
-		fmt.Println("Error: ", err)
-	}
-	defer resp.Body.Close()
+	//fmt.Println(string(body))
 
-	if resp.StatusCode == http.StatusOK {
-		fmt.Println("Logout successful!")
+	if strings.Contains(string(body), "success") {
+		fmt.Println("Logged out succesfully!")
 		os.WriteFile("token", []byte(""), 0644)
 	} else {
-		fmt.Println("Logout failed. You must be authenticated to do this.")
-		os.Exit(1)
+		fmt.Println("Logged out failed! You have to be logged in to do this!")
 	}
 }
