@@ -10,7 +10,7 @@ import (
 )
 
 var searchCmd = &cobra.Command{
-	Use:   "search [ID]",
+	Use:   "search [ID or NAME]",
 	Short: "Search for problems by ID or name.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -73,7 +73,7 @@ func searchProblems(problem_name string) {
 	}
 
 	cnt := data.Data.Count
-	fmt.Println(cnt, "problems found!")
+	fmt.Println(cnt, "problems found")
 	fmt.Println("Id  |  Name  |  Source  |  Max Score")
 	for offset := 0; offset < data.Data.Count; offset += 50 {
 		searchData["offset"] = offset
