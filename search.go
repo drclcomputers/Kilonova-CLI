@@ -83,6 +83,9 @@ func searchProblems() {
 			if problem.Max_Score == -1 {
 				problem.Max_Score = 0
 			}
+			if problem.Source_Credits == "" {
+				problem.Source_Credits = "-"
+			}
 			fmt.Printf("%d  |  %s |  %s  |  %d\n", problem.Id, problem.Name, problem.Source_Credits, problem.Max_Score)
 		}
 	}
