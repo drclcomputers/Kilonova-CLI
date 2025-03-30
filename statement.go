@@ -119,7 +119,7 @@ func printStatement() {
 		return
 	}
 
-	if strings.Contains(string(body), "\"status\":\"error\"") {
+	if strings.Contains(string(body), `"status":"error"`) {
 		log.Fatal("Error: Problem statement is not available in the chosen language!")
 	}
 
