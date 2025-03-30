@@ -1,6 +1,6 @@
 # Kilonova-CLI
 
-Kilonova-CLI is a command-line interface (CLI) client designed for interacting with the [Kilonova](https://kilonova.ro/) competitive programming platform. It enables users to manage their accounts, search for problems, submit solutions, and retrieve submission results directly from the terminal.
+Kilonova-CLI is a command-line interface (CLI) client designed for interacting with the [Kilonova](https://kilonova.ro/) competitive programming platform. It enables users to view statements, search for problems, submit solutions, and retrieve submission results directly from the terminal.
 
 ## Features
 
