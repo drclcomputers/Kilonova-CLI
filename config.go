@@ -21,7 +21,7 @@ const (
 	STAT_FILENAME_EN    = "statement-en.md"
 	URL_STATEMENT       = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
 	userAgent           = "KilonovaCLIClient/1.0"
-	help                = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
+	help                = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 )
 
 func readToken() string {
