@@ -11,7 +11,7 @@ Kilonova-CLI is a command-line interface (CLI) client designed for interacting w
 
 ## Installation
 
-To install Kilonova-CLI, ensure you have [Go](https://golang.org/dl/) installed on your system. Then, run:
+To install Kilonova-CLI, ensure you have [Go 1.24.1](https://golang.org/dl/) installed on your system. Then, run:
 
 ```sh
 git clone https://github.com/drclcomputers/Kilonova-CLI
