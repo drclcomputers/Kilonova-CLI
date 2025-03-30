@@ -1,8 +1,6 @@
 module kilocli
 
-go 1.23.0
-
-toolchain go1.24.1
+go 1.24.1
 
 require github.com/charmbracelet/glamour v0.9.1
 

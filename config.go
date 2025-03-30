@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"log"
@@ -27,9 +28,10 @@ const (
 func readToken() string {
 	token, err := os.ReadFile("token")
 	if err != nil {
-		log.Fatal("Could not read session ID. Make sure you are logged in!")
+		log.Println("Could not read session ID. Make sure you are logged in!")
+		return ""
 	}
-	return string(token)
+	return string(bytes.TrimSpace(token))
 }
 
 func logErr(err error) {
@@ -42,11 +44,14 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	token := readToken()
+	var token string
+	if use_case != "3" {
+		token = readToken()
+	}
 
 	req.Header.Set("User-Agent", userAgent)
 	switch {
-	case use_case == "1":
+	case use_case == "1" || use_case == "3":
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	case use_case == "2":
 		req.Header.Set("Content-Type", "application/json")

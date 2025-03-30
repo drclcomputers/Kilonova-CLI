@@ -20,7 +20,7 @@ func login() {
 
 	var username, password string
 
-	if len(os.Args) >= 4 {
+	if len(os.Args) == 4 {
 		username = os.Args[2]
 		password = os.Args[3]
 	} else {
@@ -32,7 +32,7 @@ func login() {
 	formData.Set("username", username)
 	formData.Set("password", password)
 
-	body, err := makeRequest("POST", url, bytes.NewBufferString(formData.Encode()), "1")
+	body, err := makeRequest("POST", url, bytes.NewBufferString(formData.Encode()), "3")
 	if err != nil {
 		logErr(err)
 	}
