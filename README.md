@@ -32,7 +32,7 @@ Once installed, you can use Kilonova-CLI to interact with the Kilonova platform.
 To authenticate with your Kilonova account:
 
 ```sh
-<PROGRAM> -signin <USERNAME> <PASSWORD>
+<PROGRAM> signin <USERNAME> <PASSWORD>
 ```
 
 This command uses the credentials provided to log in.
@@ -42,7 +42,7 @@ This command uses the credentials provided to log in.
 To search for problems containing a specific keyword:
 
 ```sh
-<PROGRAM> -search <NAME or ID>
+<PROGRAM> search <NAME or ID>
 ```
 
 
@@ -51,7 +51,7 @@ To search for problems containing a specific keyword:
 To view the statement of a specific problem:
 
 ```sh
-<PROGRAM> -statement <ID> <RO or EN>
+<PROGRAM> statement <ID> <RO or EN>
 ```
 
 Replace `<RO or EN>` with the language you want to view the statement in.
@@ -61,12 +61,12 @@ Replace `<RO or EN>` with the language you want to view the statement in.
 To submit a solution to a problem:
 
 ```sh
-<PROGRAM> -submit <ID> <LANGUAGE> <FILENAME>
+<PROGRAM> submit <ID> <LANGUAGE> <FILENAME>
 ```
 
 Replace `<LANGUAGE>` with one of the available languages which can be seen by running
 ```sh
-<PROGRAM> -langs <ID>
+<PROGRAM> langs <ID>
 ```
 and `<FILENAME>` with the path to your solution file.
 
@@ -75,7 +75,7 @@ and `<FILENAME>` with the path to your solution file.
 To check the status of your submissions:
 
 ```sh
-<PROGRAM> -submissions <ID>
+<PROGRAM> submissions <ID>
 ```
 
 This command retrieves and displays the results of your submissions.
@@ -87,6 +87,14 @@ Contributions to Kilonova-CLI are welcome! If you find a bug or have a feature r
 ## License
 
 Kilonova-CLI is licensed under the [MIT License](LICENSE).
+
+---
+
+## Used projects
+
+[Cobra](https://github.com/spf13/cobra)
+
+[Glamour](https://github.com/charmbracelet/glamour)
 
 ---
 
