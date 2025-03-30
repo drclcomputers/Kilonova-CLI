@@ -7,6 +7,10 @@ import (
 	"log"
 	"net/http"
 	"os"
+
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
 )
 
 const (
@@ -25,13 +29,40 @@ const (
 	help                = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 )
 
-func readToken() string {
+type model struct {
+	table table.Model
+}
+
+func (m model) Init() tea.Cmd {
+	return nil
+}
+
+func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q": // Quit the program
+			return m, tea.Quit
+		case "esc": // Also quit
+			return m, tea.Quit
+		}
+	}
+
+	var cmd tea.Cmd
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
+}
+
+func (m model) View() string {
+	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit)"
+}
+
+func readToken() (string, bool) {
 	token, err := os.ReadFile("token")
 	if err != nil {
-		log.Println("Could not read session ID. Make sure you are logged in!")
-		return ""
+		return "", false
 	}
-	return string(bytes.TrimSpace(token))
+	return string(bytes.TrimSpace(token)), true
 }
 
 func logErr(err error) {
@@ -44,10 +75,7 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
-	var token string
-	if use_case != "3" && use_case != "0" {
-		token = readToken()
-	}
+	token, hasToken := readToken()
 
 	req.Header.Set("User-Agent", userAgent)
 	switch {
@@ -60,7 +88,14 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 			req.Header.Set("Content-Type", use_case)
 		}
 	}
-	req.Header.Set("Authorization", token)
+
+	if hasToken {
+		req.Header.Set("Authorization", token)
+	} else {
+		if use_case == "1" {
+			log.Fatal("You must be authenticated to do this")
+		}
+	}
 
 	client := &http.Client{}
 	resp, err := client.Do(req)

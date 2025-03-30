@@ -5,10 +5,13 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log"
 	"mime/multipart"
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -102,7 +105,7 @@ func printSubmissions(problem_id string) {
 		return
 	}
 
-	fmt.Println("Nr.  |  ID  |  Time  |  Language |  Score")
+	var rows []table.Row
 
 	for i := range datasub.Data.Count {
 		parsedTime, err := time.Parse(time.RFC3339Nano,
@@ -114,10 +117,33 @@ func printSubmissions(problem_id string) {
 			return
 		}
 
-		fmt.Printf("%d.  |  %d  |  %s  |  %s  |  %d\n",
-			i+1, datasub.Data.Submissions[i].Id, formattedTime,
+		rows = append(rows, table.Row{
+			fmt.Sprintf("%d", datasub.Data.Submissions[i].Id),
+			formattedTime,
 			datasub.Data.Submissions[i].Language,
-			datasub.Data.Submissions[i].Score)
+			fmt.Sprintf("%d", datasub.Data.Submissions[i].Score),
+		})
+	}
+
+	columns := []table.Column{
+		{Title: "ID", Width: 10},
+		{Title: "TIme", Width: 20},
+		{Title: "Language", Width: 10},
+		{Title: "Score", Width: 10},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+
+	t.SetStyles(table.DefaultStyles())
+
+	p := tea.NewProgram(model{table: t})
+	if err := p.Start(); err != nil {
+		log.Fatalf("Error running program: %v", err)
 	}
 
 }

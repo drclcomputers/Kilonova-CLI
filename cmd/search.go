@@ -4,10 +4,20 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"log"
 	"os"
 
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
+
+type Problem struct {
+	ID            int    `json:"id"`
+	Name          string `json:"name"`
+	SourceCredits string `json:"source_credits"`
+	MaxScore      int    `json:"max_score"`
+}
 
 var searchCmd = &cobra.Command{
 	Use:   "search [ID or NAME]",
@@ -72,9 +82,8 @@ func searchProblems(problem_name string) {
 		pages++
 	}
 
-	cnt := data.Data.Count
-	fmt.Println(cnt, "problems found")
-	fmt.Println("Id  |  Name  |  Source  |  Max Score")
+	var rows []table.Row
+
 	for offset := 0; offset < data.Data.Count; offset += 50 {
 		searchData["offset"] = offset
 
@@ -100,7 +109,33 @@ func searchProblems(problem_name string) {
 			if problem.Source_Credits == "" {
 				problem.Source_Credits = "-"
 			}
-			fmt.Printf("%d  |  %s |  %s  |  %d\n", problem.Id, problem.Name, problem.Source_Credits, problem.Max_Score)
+			rows = append(rows, table.Row{
+				fmt.Sprintf("%d", problem.Id),
+				problem.Name,
+				problem.Source_Credits,
+				fmt.Sprintf("%d", problem.Max_Score),
+			})
 		}
+	}
+
+	columns := []table.Column{
+		{Title: "ID", Width: 5},
+		{Title: "Name", Width: 20},
+		{Title: "Source", Width: 40},
+		{Title: "Max Score", Width: 10},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+
+	t.SetStyles(table.DefaultStyles())
+
+	p := tea.NewProgram(model{table: t})
+	if err := p.Start(); err != nil {
+		log.Fatalf("Error running program: %v", err)
 	}
 }
