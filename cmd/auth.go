@@ -7,11 +7,17 @@ import (
 	"log"
 	u "net/url"
 	"os"
+	"time"
 
 	"github.com/spf13/cobra"
 )
 
 type signInResp struct {
+	Status string `json:"status"`
+	Data   string `json:"data"`
+}
+
+type extendResp struct {
 	Status string `json:"status"`
 	Data   string `json:"data"`
 }
@@ -33,11 +39,32 @@ var logoutCmd = &cobra.Command{
 	},
 }
 
+var userGetDetailsCmd = &cobra.Command{
+	Use:   "user [User ID or nf (get self ID)]",
+	Short: "Get details about a user.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		userGetDetails(args[0])
+	},
+}
+
+var extendSessionCmd = &cobra.Command{
+	Use:   "extendsession",
+	Short: "Extend the current session for 30 days more.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		extendSession()
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(signinCmd)
 	rootCmd.AddCommand(logoutCmd)
+	rootCmd.AddCommand(userGetDetailsCmd)
+	rootCmd.AddCommand(extendSessionCmd)
 }
 
+// login
 func login(username, password string) {
 
 	formData := u.Values{
@@ -82,4 +109,36 @@ func logout() {
 	} else {
 		log.Println("Logout failed: You must be logged in to do this!")
 	}
+}
+
+func userGetDetails(user_id string) {
+
+}
+
+// extend session
+func extendSession() {
+	body, err := makeRequest("POST", URL_EXTEND_SESSION, nil, "1")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var resp extendResp
+	if err := json.Unmarshal(body, &resp); err != nil {
+		fmt.Printf("error unmarshalling response: %s", err)
+		return
+	}
+
+	if resp.Status == "success" {
+		parsedTime, err := time.Parse(time.RFC3339Nano, resp.Data)
+		if err != nil {
+			logErr(err)
+			return
+		}
+		formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+		fmt.Println("Your session has been extended until ", formattedTime)
+	} else {
+		fmt.Println(resp.Data)
+	}
+
 }

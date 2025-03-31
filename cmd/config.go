@@ -8,6 +8,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -15,19 +16,23 @@ import (
 )
 
 const (
-	URL_LOGIN           = "https://kilonova.ro/api/auth/login"
-	URL_LOGOUT          = "https://kilonova.ro/api/auth/logout"
-	URL_SEARCH          = "https://kilonova.ro/api/problem/search"
-	URL_PROBLEM         = "https://kilonova.ro/api/problem/%s/"
-	URL_SELF            = "https://kilonova.ro/api/user/self/"
-	URL_LANGS_PB        = "https://kilonova.ro/api/problem/%s/languages"
-	URL_SUBMIT          = "https://kilonova.ro/api/submissions/submit"
-	URL_SUBMISSION_LIST = "https://kilonova.ro/api/submissions/get?ascending=false&limit=500&offset=0&ordering=id&problem_id=%s&user_id=%d"
-	STAT_FILENAME_RO    = "statement-ro.md"
-	STAT_FILENAME_EN    = "statement-en.md"
-	URL_STATEMENT       = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
-	userAgent           = "KilonovaCLIClient/0.1"
-	help                = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
+	URL_LOGIN                      = "https://kilonova.ro/api/auth/login"
+	URL_LOGOUT                     = "https://kilonova.ro/api/auth/logout"
+	URL_EXTEND_SESSION             = "https://kilonova.ro/api/auth/extendSession"
+	URL_SEARCH                     = "https://kilonova.ro/api/problem/search"
+	URL_PROBLEM                    = "https://kilonova.ro/api/problem/%s/"
+	URL_SELF                       = "https://kilonova.ro/api/user/self/"
+	URL_LANGS_PB                   = "https://kilonova.ro/api/problem/%s/languages"
+	URL_SUBMIT                     = "https://kilonova.ro/api/submissions/submit"
+	URL_SUBMISSION_LIST            = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
+	URL_SUBMISSION_LIST_NO_FILTER  = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
+	URL_SUBMISSION_LIST_NO_PROBLEM = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
+	URL_SUBMISSION_LIST_NO_USER    = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s"
+	STAT_FILENAME_RO               = "statement-ro.md"
+	STAT_FILENAME_EN               = "statement-en.md"
+	URL_STATEMENT                  = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
+	userAgent                      = "KilonovaCLIClient/0.1"
+	help                           = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 )
 
 type model struct {
@@ -64,23 +69,23 @@ func (m model) View() string {
 	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit)"
 }
 
-func getUserID() int {
+func getUserID() string {
 	//get user id
 
 	jsonData := []byte(`{"key": "value"}`)
 	body, err := makeRequest("GET", URL_SELF, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
 		logErr(err)
-		return -1
+		return ""
 	}
 
 	var data userid
 	if err := json.Unmarshal(body, &data); err != nil {
 		logErr(err)
-		return -1
+		return ""
 	}
 
-	return data.Data.ID
+	return strconv.Itoa(data.Data.ID)
 }
 
 func readToken() (string, bool) {

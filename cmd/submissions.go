@@ -35,20 +35,20 @@ var checkLangsCmd = &cobra.Command{
 }
 
 var printSubmissionsCmd = &cobra.Command{
-	Use:   "submissions [ID]",
+	Use:   "submissions [Problem ID or all (all problems)] [User ID, me (personal submissions), all (all users)] [1st page] [last page]",
 	Short: "View sent submissions to a problem.",
-	Args:  cobra.ExactArgs(1),
+	Args:  cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
-		printSubmissions(args[0])
+		printSubmissions(args[0], args[1], args[2], args[3])
 	},
 }
 
 var printSubmInfo = &cobra.Command{
-	Use:   "submissioninfo [Problem ID] [Submission ID]",
+	Use:   "submissioninfo [Problem ID] [User ID] [Submission ID]",
 	Short: "View a detailed description of a sent submission.",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		printDetailsSubmissions(args[0], args[1])
+		printDetailsSubmissions(args[0], args[1], args[2])
 	},
 }
 
@@ -64,10 +64,12 @@ func init() {
 type submissionlist struct {
 	Data struct {
 		Submissions []struct {
+			UserID          int     `json:"user_id"`
+			ProblemID       int     `json:"problem_id"`
 			Id              int     `json:"id"`
 			Created_at      string  `json:"created_at"`
 			Language        string  `json:"language"`
-			Score           int     `json:"score"`
+			Score           float64 `json:"score"`
 			Max_memory      int     `json:"max_memory"`
 			Max_time        float64 `json:"max_time"`
 			Compile_error   bool    `json:"compile_error"`
@@ -77,49 +79,82 @@ type submissionlist struct {
 	} `json:"data"`
 }
 
-func printSubmissions(problem_id string) {
-	user_id := getUserID()
+func printSubmissions(problem_id, user_id, fpag, lpag string) {
+	if user_id == "me" {
+		user_id = getUserID()
+	}
 
 	//get submissions on problem
 
-	jsonData := []byte(`{"key": "value"}`)
-	url := fmt.Sprintf(URL_SUBMISSION_LIST, problem_id, user_id)
+	var datasub submissionlist
 
-	body, err := makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
+	var rows []table.Row
+
+	cnt := -1
+	fpagnr, err := strconv.Atoi(fpag)
 	if err != nil {
 		logErr(err)
 		return
 	}
 
-	var datasub submissionlist
-	if err := json.Unmarshal(body, &datasub); err != nil {
+	lpagnr, err := strconv.Atoi(lpag)
+	if err != nil {
 		logErr(err)
 		return
 	}
 
-	var rows []table.Row
+	for offset := max((fpagnr-1)*50, 0); cnt == -1 || (offset < cnt && offset < max((lpagnr-1)*50, 50)); offset += 50 {
+		var url string
+		switch {
+		case user_id == "all" && problem_id == "all":
+			url = fmt.Sprintf(URL_SUBMISSION_LIST_NO_FILTER, offset)
+		case user_id == "all":
+			url = fmt.Sprintf(URL_SUBMISSION_LIST_NO_USER, offset, problem_id)
+		case problem_id == "all":
+			url = fmt.Sprintf(URL_SUBMISSION_LIST_NO_PROBLEM, offset, user_id)
+		default:
+			url = fmt.Sprintf(URL_SUBMISSION_LIST, offset, problem_id, user_id)
+		}
 
-	for i := range datasub.Data.Count {
-		parsedTime, err := time.Parse(time.RFC3339Nano,
-			datasub.Data.Submissions[i].Created_at)
-		formattedTime := parsedTime.Format("2006-01-02 15:04:05")
-
+		body, err := makeRequest("GET", url, nil, "1")
 		if err != nil {
 			logErr(err)
 			return
 		}
 
-		rows = append(rows, table.Row{
-			fmt.Sprintf("%d", datasub.Data.Submissions[i].Id),
-			formattedTime,
-			datasub.Data.Submissions[i].Language,
-			fmt.Sprintf("%d", datasub.Data.Submissions[i].Score),
-		})
+		err = json.Unmarshal(body, &datasub)
+		if err != nil {
+			logErr(err)
+			return
+		}
+
+		cnt = datasub.Data.Count
+
+		for _, problem := range datasub.Data.Submissions {
+			parsedTime, err := time.Parse(time.RFC3339Nano, problem.Created_at)
+			formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+
+			if err != nil {
+				logErr(err)
+				return
+			}
+
+			rows = append(rows, table.Row{
+				fmt.Sprintf("%d", problem.ProblemID),
+				fmt.Sprintf("%d", problem.UserID),
+				fmt.Sprintf("%d", problem.Id),
+				formattedTime,
+				problem.Language,
+				fmt.Sprintf("%.0f", problem.Score),
+			})
+		}
 	}
 
 	columns := []table.Column{
-		{Title: "ID", Width: 10},
-		{Title: "TIme", Width: 20},
+		{Title: "Pb ID", Width: 5},
+		{Title: "User ID", Width: 7},
+		{Title: "Submission ID", Width: 12},
+		{Title: "Time", Width: 25},
 		{Title: "Language", Width: 10},
 		{Title: "Score", Width: 10},
 	}
@@ -140,43 +175,54 @@ func printSubmissions(problem_id string) {
 
 }
 
-func printDetailsSubmissions(problem_id, submission_id string) {
-	user_id := getUserID()
+func printDetailsSubmissions(problem_id, user_id, submission_id string) {
 
-	jsonData := []byte(`{"key": "value"}`)
-	url := fmt.Sprintf(URL_SUBMISSION_LIST, problem_id, user_id)
-
-	body, err := makeRequest("GET", url, bytes.NewBuffer(jsonData), "1")
-	if err != nil {
-		logErr(err)
-		return
+	if user_id == "me" {
+		user_id = getUserID()
 	}
+
+	//get submissions on problem
 
 	var datasub submissionlist
-	if err := json.Unmarshal(body, &datasub); err != nil {
-		logErr(err)
-		return
-	}
 
-	for i := range datasub.Data.Count {
-		if nr, err := strconv.Atoi(submission_id); err == nil && datasub.Data.Submissions[i].Id == nr {
-			parsedTime, err := time.Parse(time.RFC3339Nano,
-				datasub.Data.Submissions[i].Created_at)
-			formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+	cnt := 50
 
-			if err != nil {
-				logErr(err)
+	for offset := 0; offset < cnt; offset += 50 {
+		url := fmt.Sprintf(URL_SUBMISSION_LIST, offset, problem_id, user_id)
+
+		body, err := makeRequest("GET", url, nil, "1")
+		if err != nil {
+			logErr(err)
+			return
+		}
+
+		err = json.Unmarshal(body, &datasub)
+		if err != nil {
+			logErr(err)
+			return
+		}
+
+		cnt = datasub.Data.Count
+
+		for _, problem := range datasub.Data.Submissions {
+			if nr, err := strconv.Atoi(submission_id); err == nil && problem.Id == nr {
+				parsedTime, err := time.Parse(time.RFC3339Nano, problem.Created_at)
+				formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+
+				if err != nil {
+					logErr(err)
+					return
+				}
+				problemInfo(problem_id)
+
+				fmt.Printf("\nSubmission ID: #%d\nCreated: %s\nLanguage: %s\nScore: %.0f\n",
+					problem.Id, formattedTime,
+					problem.Language, problem.Score)
+				fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\n",
+					problem.Max_memory, problem.Max_time,
+					problem.Compile_error, problem.Compile_message)
 				return
 			}
-			problemInfo(problem_id)
-
-			fmt.Printf("\nSubmission ID: #%d\nCreated: %s\nLanguage: %s\nScore: %d\n",
-				datasub.Data.Submissions[i].Id, formattedTime,
-				datasub.Data.Submissions[i].Language, datasub.Data.Submissions[i].Score)
-			fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\n",
-				datasub.Data.Submissions[i].Max_memory, datasub.Data.Submissions[i].Max_time,
-				datasub.Data.Submissions[i].Compile_error, datasub.Data.Submissions[i].Compile_message)
-			return
 		}
 	}
 }
