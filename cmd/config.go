@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
 	"log"
@@ -33,6 +34,12 @@ type model struct {
 	table table.Model
 }
 
+type userid struct {
+	Data struct {
+		ID int `json:"id"`
+	} `json:"data"`
+}
+
 func (m model) Init() tea.Cmd {
 	return nil
 }
@@ -41,9 +48,9 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
-		case "q": // Quit the program
+		case "q":
 			return m, tea.Quit
-		case "esc": // Also quit
+		case "esc":
 			return m, tea.Quit
 		}
 	}
@@ -55,6 +62,25 @@ func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 func (m model) View() string {
 	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit)"
+}
+
+func getUserID() int {
+	//get user id
+
+	jsonData := []byte(`{"key": "value"}`)
+	body, err := makeRequest("GET", URL_SELF, bytes.NewBuffer(jsonData), "1")
+	if err != nil {
+		logErr(err)
+		return -1
+	}
+
+	var data userid
+	if err := json.Unmarshal(body, &data); err != nil {
+		logErr(err)
+		return -1
+	}
+
+	return data.Data.ID
 }
 
 func readToken() (string, bool) {

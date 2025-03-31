@@ -83,8 +83,7 @@ type statement struct {
 	} `json:"data"`
 }
 
-func printStatement(id, language string) {
-
+func problemInfo(id string) {
 	//info
 	url := fmt.Sprintf(URL_PROBLEM, id)
 	body, err := makeRequest("GET", url, nil, "0")
@@ -102,6 +101,15 @@ func printStatement(id, language string) {
 		info.Data.Name, id, info.Data.Time, info.Data.MemoryLimit,
 		info.Data.SourceSize, info.Data.SourceCredits)
 
+}
+
+func printStatement(id, language string) {
+	var url string
+
+	problemInfo(id)
+
+	//statement
+
 	renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"))
 	if err != nil {
 		logErr(err)
@@ -114,13 +122,12 @@ func printStatement(id, language string) {
 	}
 	fmt.Println(rendered)
 
-	//statement
 	if language == "RO" {
 		url = fmt.Sprintf(URL_STATEMENT, id, STAT_FILENAME_RO)
 	} else {
 		url = fmt.Sprintf(URL_STATEMENT, id, STAT_FILENAME_EN)
 	}
-	body, err = makeRequest("GET", url, nil, "0")
+	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
 		return
