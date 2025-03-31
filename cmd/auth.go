@@ -9,6 +9,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/charmbracelet/bubbles/table"
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
 
@@ -20,6 +22,25 @@ type signInResp struct {
 type extendResp struct {
 	Status string `json:"status"`
 	Data   string `json:"data"`
+}
+
+type userDetailResp struct {
+	Data struct {
+		Id          int    `json:"id"`
+		Name        string `json:"name"`
+		Admin       bool   `json:"admin"`
+		Proposer    bool   `json:"proposer"`
+		DisplayName string `json:"display_name"`
+	} `json:"data"`
+}
+
+type userSolvedProblems struct {
+	Data []struct {
+		Problem_ID int     `json:"id"`
+		Name       string  `json:"name"`
+		Source     string  `json:"source_credits"`
+		Score      float64 `json:"score_scale"`
+	} `json:"data"`
 }
 
 var signinCmd = &cobra.Command{
@@ -40,11 +61,20 @@ var logoutCmd = &cobra.Command{
 }
 
 var userGetDetailsCmd = &cobra.Command{
-	Use:   "user [User ID or nf (get self ID)]",
+	Use:   "user [User ID or me (get self ID)]",
 	Short: "Get details about a user.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		userGetDetails(args[0])
+	},
+}
+
+var userSolvedProblemsCmd = &cobra.Command{
+	Use:   "solvedproblems [User ID or me (get self ID)]",
+	Short: "Get list of solved problems by user.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		userGetSolvedProblems(args[0])
 	},
 }
 
@@ -62,6 +92,7 @@ func init() {
 	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(userGetDetailsCmd)
 	rootCmd.AddCommand(extendSessionCmd)
+	rootCmd.AddCommand(userSolvedProblemsCmd)
 }
 
 // login
@@ -112,13 +143,98 @@ func logout() {
 }
 
 func userGetDetails(user_id string) {
-	body, err := makeRequest("GET", URL_SELF, nil, "1")
+	var url string
+	if user_id == "me" {
+		if _, aux := readToken(); !aux {
+			log.Fatalln("You must be authenticated to do this!")
+			return
+		}
+		url = URL_SELF
+	} else {
+		url = fmt.Sprintf(URL_USER, user_id)
+	}
+
+	body, err := makeRequest("GET", url, nil, "3")
 	if err != nil {
 		logErr(err)
 		return
 	}
 
-	fmt.Println(string(body))
+	var dataUser userDetailResp
+
+	err = json.Unmarshal(body, &dataUser)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if dataUser.Data.DisplayName == "" {
+		dataUser.Data.DisplayName = "-"
+	}
+
+	fmt.Printf("ID: %d\nName: %s\nA.K.A: %s\nAdmin: %t\nProposer: %t\n\n",
+		dataUser.Data.Id, dataUser.Data.Name, dataUser.Data.DisplayName,
+		dataUser.Data.Admin, dataUser.Data.Proposer)
+}
+
+func userGetSolvedProblems(user_id string) {
+	var url string
+	if user_id == "me" {
+		if _, aux := readToken(); !aux {
+			log.Fatalln("You must be authenticated to do this!")
+			return
+		}
+		url = URL_SELF_PROBLEMS
+	} else {
+		url = fmt.Sprintf(URL_USER_PROBLEMS, user_id)
+	}
+
+	body, err := makeRequest("GET", url, nil, "3")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataUser userSolvedProblems
+
+	err = json.Unmarshal(body, &dataUser)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var rows []table.Row
+
+	for _, problem := range dataUser.Data {
+
+		rows = append(rows, table.Row{
+			fmt.Sprintf("%d", problem.Problem_ID),
+			problem.Name,
+			problem.Source,
+			fmt.Sprintf("%.0f", problem.Score),
+		})
+	}
+
+	columns := []table.Column{
+		{Title: "Problem ID", Width: 7},
+		{Title: "Name", Width: 20},
+		{Title: "Source", Width: 40},
+		{Title: "Score", Width: 7},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(10),
+	)
+
+	t.SetStyles(table.DefaultStyles())
+
+	p := tea.NewProgram(model{table: t})
+	if t, err := p.Run(); err != nil {
+		log.Fatalf("Error running program: %s %v", t, err)
+	}
 }
 
 // extend session

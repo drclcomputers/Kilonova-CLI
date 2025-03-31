@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"os"
 	"regexp"
 	"strings"
 
+	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 )
@@ -83,21 +85,21 @@ type statement struct {
 	} `json:"data"`
 }
 
-func problemInfo(id string) {
+func problemInfo(id string) string {
 	//info
 	url := fmt.Sprintf(URL_PROBLEM, id)
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
-		return
+		os.Exit(1)
 	}
 
 	var info info
 	if err := json.Unmarshal(body, &info); err != nil {
 		logErr(err)
-		return
+		os.Exit(1)
 	}
-	fmt.Printf("\nName: %s\nID: #%s\nTime Limit: %.2fs\nMemory Limit: %dKB\nSource Size: %dKB\nCredits: %s\n",
+	return fmt.Sprintf("Name: %s\n\nID: #%s\n\nTime Limit: %.2fs\n\nMemory Limit: %dKB\n\nSource Size: %dKB\n\nCredits: %s\n\n",
 		info.Data.Name, id, info.Data.Time, info.Data.MemoryLimit,
 		info.Data.SourceSize, info.Data.SourceCredits)
 
@@ -106,8 +108,6 @@ func problemInfo(id string) {
 func printStatement(id, language string) {
 	var url string
 
-	problemInfo(id)
-
 	//statement
 
 	renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"))
@@ -115,12 +115,6 @@ func printStatement(id, language string) {
 		logErr(err)
 		return
 	}
-	rendered, err := renderer.Render("# Statement")
-	if err != nil {
-		logErr(err)
-		return
-	}
-	fmt.Println(rendered)
 
 	if language == "RO" {
 		url = fmt.Sprintf(URL_STATEMENT, id, STAT_FILENAME_RO)
@@ -149,10 +143,14 @@ func printStatement(id, language string) {
 	}
 	decodedtext := formatText(string(text))
 
-	rendered, err = renderer.Render(decodedtext)
+	rendered, err := renderer.Render(problemInfo(id) + "\n# STATEMENT\n\n" + decodedtext)
 	if err != nil {
 		logErr(err)
 		return
 	}
-	fmt.Println(rendered)
+
+	p := tea.NewProgram(newTextModel(rendered))
+	if _, err := p.Run(); err != nil {
+		fmt.Println("Error:", err)
+	}
 }
