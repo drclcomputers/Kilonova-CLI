@@ -112,7 +112,13 @@ func logout() {
 }
 
 func userGetDetails(user_id string) {
+	body, err := makeRequest("GET", URL_SELF, nil, "1")
+	if err != nil {
+		logErr(err)
+		return
+	}
 
+	fmt.Println(string(body))
 }
 
 // extend session
