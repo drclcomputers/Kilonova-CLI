@@ -202,10 +202,6 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 			Value: token,
 		}
 		req.AddCookie(cookie)
-
-		for _, c := range req.Cookies() {
-			fmt.Println("Cookie:", c.Name, "=", c.Value)
-		}
 	}
 
 	resp, err := http.DefaultClient.Do(req)
