@@ -118,14 +118,16 @@ func login(username, password string) {
 		log.Fatalf("Error parsing response: %v", err)
 	}
 
-	configDir := filepath.Join(os.Getenv("HOME"), ".config", "kn-cli")
-	tokenFile := filepath.Join(configDir, "token")
-
-	err = os.MkdirAll(configDir, 0755)
+	homedir, err := os.UserHomeDir()
 	if err != nil {
-		fmt.Println("Error creating directory:", err)
-		return
+		logErr(err)
 	}
+	configDir := filepath.Join(homedir, ".config", "kn-cli")
+	err = os.MkdirAll(configDir, os.ModePerm)
+	if err != nil {
+		logErr(err)
+	}
+	tokenFile := filepath.Join(configDir, "token")
 
 	file, err := os.Create(tokenFile)
 	if err != nil {
@@ -153,7 +155,11 @@ func logout() {
 
 	if bytes.Contains(body, []byte("success")) {
 		fmt.Println("Logged out successfully!")
-		configDir := filepath.Join(os.Getenv("HOME"), ".config", "kn-cli")
+		homedir, err := os.UserHomeDir()
+		if err != nil {
+			logErr(err)
+		}
+		configDir := filepath.Join(homedir, ".config", "kn-cli")
 		tokenFile := filepath.Join(configDir, "token")
 		_ = os.Remove(tokenFile)
 	} else {

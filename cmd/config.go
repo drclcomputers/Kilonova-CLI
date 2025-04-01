@@ -41,6 +41,7 @@ const (
 	STAT_FILENAME_RO               = "statement-ro.md"
 	STAT_FILENAME_EN               = "statement-en.md"
 	URL_STATEMENT                  = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
+	URL_ASSETS                     = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
 	userAgent                      = "KilonovaCLIClient/0.1"
 	help                           = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 )
@@ -144,8 +145,13 @@ func getUserID() string {
 }
 
 func readToken() (string, bool) {
-	configDir := filepath.Join(os.Getenv("HOME"), ".config", "kn-cli")
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		logErr(err)
+	}
+	configDir := filepath.Join(homedir, ".config", "kn-cli")
 	tokenFile := filepath.Join(configDir, "token")
+
 	token, err := os.ReadFile(tokenFile)
 	if err != nil {
 		return "", false
@@ -167,12 +173,15 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 
 	req.Header.Set("User-Agent", userAgent)
 	switch {
-	case use_case == "1" || use_case == "3":
+	case use_case == "1" || use_case == "3": //form: 1 - logged, 3 - guest
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	case use_case == "2":
+	case use_case == "2": //json
 		req.Header.Set("Content-Type", "application/json")
+	case use_case == "4": //download zip
+		req.Header.Set("Content-Type", "application/zip")
+		fmt.Println("Trying to obtain archive...")
 	default:
-		if use_case != "0" {
+		if use_case != "0" { //other use cases
 			req.Header.Set("Content-Type", use_case)
 		}
 	}
@@ -180,8 +189,21 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	if hasToken {
 		req.Header.Set("Authorization", token)
 	} else {
-		if use_case == "1" {
+		if use_case == "1" || use_case == "4" {
 			log.Fatal("You must be authenticated to do this")
+		}
+	}
+
+	if use_case == "4" {
+		req.Header.Set("Accept", "application/zip")
+		cookie := &http.Cookie{
+			Name:  "kn-sessionid",
+			Value: token,
+		}
+		req.AddCookie(cookie)
+
+		for _, c := range req.Cookies() {
+			fmt.Println("Cookie:", c.Name, "=", c.Value)
 		}
 	}
 
@@ -195,6 +217,10 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
+
+	//if use_case == "4" {
+	//	return data, nil
+	//}
 
 	if resp.StatusCode != http.StatusOK {
 		var respKN KNResponse
