@@ -17,11 +17,11 @@ import (
 )
 
 var iniProjectCmd = &cobra.Command{
-	Use:   "initproject [Problem ID]",
-	Short: "Create a project, consisting of the statement and assets already downloaded.",
-	Args:  cobra.ExactArgs(1),
+	Use:   "initproject [Problem ID] [Language]",
+	Short: "Create a project, consisting of the statement, assets already downloaded and a source file for your chosen language.",
+	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		initProject(args[0])
+		initProject(args[0], args[1])
 	},
 }
 
@@ -111,7 +111,76 @@ func Unzip(src string, dest string) error {
 	return nil
 }
 
-func initProject(problem_id string) {
+var helloWorldprog = []string{
+	`#include <stdio.h>
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}`,
+	`#include <iostream>
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    return 0;
+}`,
+	`package main
+import "fmt"
+func main() {
+    fmt.Println("Hello, World!")
+}`,
+	`fun main() {
+    println("Hello, World!")
+}`,
+	`console.log("Hello, World!");`,
+	`program HelloWorld;
+begin
+    writeln('Hello, World!');
+end.
+`,
+	`<?php
+echo "Hello, World!\n";
+?>
+`, `print("Hello, World!")
+`, `fn main() {
+    println!("Hello, World!");
+}
+`,
+}
+
+// 0-C 1-CPP 2-GO 3-Kotlin 4-JS 5-PAS 6-PHP 7-Py 8-Rust
+func createSource(cwd, lang string) {
+	filename := filepath.Join(cwd, "Source.")
+	switch lang {
+	case "c":
+		filename += "c"
+		os.WriteFile(filename, []byte(helloWorldprog[0]), 0644)
+	case "golang":
+		filename += "go"
+		os.WriteFile(filename, []byte(helloWorldprog[2]), 0644)
+	case "kotlin":
+		filename += "kt"
+		os.WriteFile(filename, []byte(helloWorldprog[3]), 0644)
+	case "nodejs":
+		filename += "js"
+		os.WriteFile(filename, []byte(helloWorldprog[4]), 0644)
+	case "pascal":
+		filename += "pas"
+		os.WriteFile(filename, []byte(helloWorldprog[5]), 0644)
+	case "php":
+		filename += "php"
+		os.WriteFile(filename, []byte(helloWorldprog[6]), 0644)
+	case "python3":
+		filename += "py"
+		os.WriteFile(filename, []byte(helloWorldprog[7]), 0644)
+	case "rust":
+		filename += "rs"
+		os.WriteFile(filename, []byte(helloWorldprog[8]), 0644)
+	default:
+		filename += "cpp"
+		os.WriteFile(filename, []byte(helloWorldprog[1]), 0644)
+	}
+}
+
+func initProject(problem_id, lang string) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		fmt.Printf("Could not get current working directory! Err: %v\n", err)
@@ -147,4 +216,22 @@ func initProject(problem_id string) {
 	}
 
 	moveFiles(cwd)
+
+	ok := false
+
+	supportedLangs := checklangs(problem_id, 2)
+	for i := 0; i < len(supportedLangs); i++ {
+		if lang == supportedLangs[i] {
+			ok = true
+
+			createSource(cwd, lang)
+
+			return
+		}
+	}
+
+	if !ok {
+		fmt.Println("Problem is not available in the selected language!")
+	}
+
 }
