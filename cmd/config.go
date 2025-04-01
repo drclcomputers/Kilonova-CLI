@@ -185,8 +185,7 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 		}
 	}
 
-	client := &http.Client{}
-	resp, err := client.Do(req)
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("error making request: %w", err)
 	}
@@ -197,11 +196,13 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
 
-	var respKN KNResponse
-
-	if err := json.Unmarshal(data, &respKN); err != nil {
-		logErr(err)
-		fmt.Println(respKN.Data)
+	if resp.StatusCode != http.StatusOK {
+		var respKN KNResponse
+		if err := json.Unmarshal(data, &respKN); err != nil {
+			logErr(err)
+		}
+		fmt.Println("Error: " + string(respKN.Data))
+		os.Exit(1)
 	}
 
 	return data, nil
