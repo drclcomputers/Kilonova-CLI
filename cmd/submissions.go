@@ -1,3 +1,8 @@
+// Copyright (c) 2025 @drclcomputers. All rights reserved.
+//
+// This work is licensed under the terms of the MIT license.
+// For a copy, see <https://opensource.org/licenses/MIT>.
+
 package cmd
 
 import (
@@ -30,7 +35,7 @@ var checkLangsCmd = &cobra.Command{
 	Short: "View available languages for solutions.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		checklangs(args[0])
+		checklangs(args[0], 1)
 	},
 }
 
@@ -261,7 +266,7 @@ type latestSubmission struct {
 	}
 }
 
-func checklangs(problem_id string) {
+func checklangs(problem_id string, use_case int) []string {
 	//get languages
 	url := fmt.Sprintf(URL_LANGS_PB, problem_id)
 	body, err := makeRequest("GET", url, nil, "0")
@@ -275,8 +280,17 @@ func checklangs(problem_id string) {
 		os.Exit(1)
 	}
 
-	for i := range langs.Data {
-		fmt.Println(i+1, langs.Data[i].Name)
+	if use_case == 1 {
+		for i := range langs.Data {
+			fmt.Println(i+1, langs.Data[i].Name)
+		}
+		return nil
+	} else {
+		var listLangs []string
+		for i := range langs.Data {
+			listLangs = append(listLangs, langs.Data[i].Name)
+		}
+		return listLangs
 	}
 }
 
