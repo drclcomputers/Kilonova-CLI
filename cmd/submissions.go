@@ -187,6 +187,8 @@ func printDetailsSubmissions(problem_id, user_id, submission_id string) {
 
 	cnt := 50
 
+	ok := false
+
 	for offset := 0; offset < cnt; offset += 50 {
 		url := fmt.Sprintf(URL_SUBMISSION_LIST, offset, problem_id, user_id)
 
@@ -206,6 +208,8 @@ func printDetailsSubmissions(problem_id, user_id, submission_id string) {
 
 		for _, problem := range datasub.Data.Submissions {
 			if nr, err := strconv.Atoi(submission_id); err == nil && problem.Id == nr {
+				ok = true
+
 				parsedTime, err := time.Parse(time.RFC3339Nano, problem.Created_at)
 				formattedTime := parsedTime.Format("2006-01-02 15:04:05")
 
@@ -224,6 +228,10 @@ func printDetailsSubmissions(problem_id, user_id, submission_id string) {
 				return
 			}
 		}
+	}
+
+	if !ok {
+		fmt.Println("No submission for these parameters were found!")
 	}
 }
 
@@ -343,7 +351,7 @@ func uploadCode(id, lang, file string) {
 	if !dataLatestSubmit.Data.CompileError {
 		fmt.Println("\nSucces! Score: ", dataLatestSubmit.Data.Score)
 	} else {
-		fmt.Println("Compilation failed! Score: 0")
+		fmt.Println("\nCompilation failed! Score: 0")
 	}
 
 }
