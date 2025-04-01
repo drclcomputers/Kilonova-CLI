@@ -17,7 +17,7 @@ import (
 )
 
 var iniProjectCmd = &cobra.Command{
-	Use:   "initproject [Problem ID] [Language]",
+	Use:   "init [Problem ID] [Language]",
 	Short: "Create a project, consisting of the statement, assets already downloaded and a source file for your chosen language.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -57,7 +57,7 @@ func moveFiles(rootDir string) error {
 		}
 
 		ext := strings.ToLower(filepath.Ext(d.Name()))
-		if ext == ".md" || ext == ".pdf" {
+		if ext == ".md" || ext == ".pdf" || ext == ".h" {
 			destPath := filepath.Join(rootDir, d.Name())
 
 			if path == destPath {
@@ -200,22 +200,11 @@ func initProject(problem_id, lang string) {
 		return
 	}
 
-	getAssets(problem_id)
-
-	archiveFilename := fmt.Sprintf("%s.zip", problem_id)
-	unzipedDir := problem_id
-
-	Unzip(archiveFilename, unzipedDir)
-
-	_ = os.Remove(archiveFilename)
-
 	cwd, err = os.Getwd()
 	if err != nil {
 		fmt.Printf("Could not get current working directory! Err: %v\n", err)
 		return
 	}
-
-	moveFiles(cwd)
 
 	ok := false
 
@@ -225,13 +214,23 @@ func initProject(problem_id, lang string) {
 			ok = true
 
 			createSource(cwd, lang)
-
-			return
 		}
 	}
 
 	if !ok {
 		fmt.Println("Problem is not available in the selected language!")
+		return
 	}
+
+	getAssets(problem_id)
+
+	archiveFilename := fmt.Sprintf("%s.zip", problem_id)
+	unzipedDir := problem_id
+
+	Unzip(archiveFilename, unzipedDir)
+
+	_ = os.Remove(archiveFilename)
+
+	moveFiles(cwd)
 
 }
