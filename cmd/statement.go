@@ -56,13 +56,15 @@ func formatText(decodedtext string) string {
 		`\\bm{(.*?)}`,
 		`\\textit{(.*?)}`,
 		`\\rule\{[^}]+\}\{[^}]+\}`,
-		`~\[([^\]]+)\]`,
 	}
 
 	for _, pattern := range replacementsRegex {
 		re := regexp.MustCompile(pattern)
 		decodedtext = re.ReplaceAllString(decodedtext, "$1")
 	}
+
+	re := regexp.MustCompile(`~\[([^\]]+)\]`)
+	decodedtext = re.ReplaceAllString(decodedtext, "$1 Download the assets to view images.")
 
 	return decodedtext
 }
