@@ -7,6 +7,7 @@ import (
 	"log"
 	u "net/url"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -117,7 +118,23 @@ func login(username, password string) {
 		log.Fatalf("Error parsing response: %v", err)
 	}
 
-	if err := os.WriteFile("./token", []byte(response.Data), 0644); err != nil {
+	configDir := filepath.Join(os.Getenv("HOME"), ".config", "kn-cli")
+	tokenFile := filepath.Join(configDir, "token")
+
+	err = os.MkdirAll(configDir, 0755)
+	if err != nil {
+		fmt.Println("Error creating directory:", err)
+		return
+	}
+
+	file, err := os.Create(tokenFile)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer file.Close()
+
+	if err := os.WriteFile(tokenFile, []byte(response.Data), 0644); err != nil {
 		log.Fatalf("Error writing auth token to file: %v", err)
 	}
 
@@ -136,7 +153,9 @@ func logout() {
 
 	if bytes.Contains(body, []byte("success")) {
 		fmt.Println("Logged out successfully!")
-		_ = os.Remove("token")
+		configDir := filepath.Join(os.Getenv("HOME"), ".config", "kn-cli")
+		tokenFile := filepath.Join(configDir, "token")
+		_ = os.Remove(tokenFile)
 	} else {
 		log.Println("Logout failed: You must be logged in to do this!")
 	}
@@ -145,10 +164,6 @@ func logout() {
 func userGetDetails(user_id string) {
 	var url string
 	if user_id == "me" {
-		if _, aux := readToken(); !aux {
-			log.Fatalln("You must be authenticated to do this!")
-			return
-		}
 		url = URL_SELF
 	} else {
 		url = fmt.Sprintf(URL_USER, user_id)
@@ -180,10 +195,6 @@ func userGetDetails(user_id string) {
 func userGetSolvedProblems(user_id string) {
 	var url string
 	if user_id == "me" {
-		if _, aux := readToken(); !aux {
-			log.Fatalln("You must be authenticated to do this!")
-			return
-		}
 		url = URL_SELF_PROBLEMS
 	} else {
 		url = fmt.Sprintf(URL_USER_PROBLEMS, user_id)

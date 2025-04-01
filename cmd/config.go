@@ -10,6 +10,8 @@ import (
 	"os"
 	"strconv"
 
+	"path/filepath"
+
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
@@ -117,6 +119,11 @@ type userid struct {
 	} `json:"data"`
 }
 
+type KNResponse struct {
+	Status string          `json:"status"`
+	Data   json.RawMessage `json:"data"`
+}
+
 func getUserID() string {
 	//get user id
 
@@ -137,7 +144,9 @@ func getUserID() string {
 }
 
 func readToken() (string, bool) {
-	token, err := os.ReadFile("token")
+	configDir := filepath.Join(os.Getenv("HOME"), ".config", "kn-cli")
+	tokenFile := filepath.Join(configDir, "token")
+	token, err := os.ReadFile(tokenFile)
 	if err != nil {
 		return "", false
 	}
@@ -186,6 +195,13 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
+	}
+
+	var respKN KNResponse
+
+	if err := json.Unmarshal(data, &respKN); err != nil {
+		logErr(err)
+		fmt.Println(respKN.Data)
 	}
 
 	return data, nil
