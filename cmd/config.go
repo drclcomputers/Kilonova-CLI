@@ -34,6 +34,7 @@ const (
 	URL_USER_PROBLEMS              = "https://kilonova.ro/api/user/byID/%s/solvedProblems"
 	URL_LANGS_PB                   = "https://kilonova.ro/api/problem/%s/languages"
 	URL_SUBMIT                     = "https://kilonova.ro/api/submissions/submit"
+	URL_LATEST_SUBMISSION          = "https://kilonova.ro/api/submissions/getByID?id=%d"
 	URL_SUBMISSION_LIST            = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
 	URL_SUBMISSION_LIST_NO_FILTER  = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
 	URL_SUBMISSION_LIST_NO_PROBLEM = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
@@ -217,10 +218,6 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	if err != nil {
 		return nil, fmt.Errorf("error reading response body: %w", err)
 	}
-
-	//if use_case == "4" {
-	//	return data, nil
-	//}
 
 	if resp.StatusCode != http.StatusOK {
 		var respKN KNResponse

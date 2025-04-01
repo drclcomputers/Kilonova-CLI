@@ -244,6 +244,15 @@ type langs struct {
 	} `json:"data"`
 }
 
+type latestSubmission struct {
+	Status string `json:"status"`
+	Data   struct {
+		Status       string `json:"status"`
+		CompileError bool   `json:"compile_error"`
+		Score        int    `json:"score"`
+	}
+}
+
 func checklangs(problem_id string) {
 	//get languages
 	url := fmt.Sprintf(URL_LANGS_PB, problem_id)
@@ -305,5 +314,36 @@ func uploadCode(id, lang, file string) {
 		}
 		fmt.Printf("Status: %s\nMessage: %s\n", dataerr.Status, dataerr.Data)
 	}
-	fmt.Printf("Status: %s\nSubmission ID: %d\n", data.Status, data.Data)
+	fmt.Printf("Submission sent: %s\nSubmission ID: %d\n", data.Status, data.Data)
+
+	url := fmt.Sprintf(URL_LATEST_SUBMISSION, data.Data)
+
+	body, err = makeRequest("GET", url, nil, "0")
+	if err != nil {
+		logErr(err)
+	}
+
+	var dataLatestSubmit latestSubmission
+	if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
+		logErr(err)
+	}
+
+	for dataLatestSubmit.Data.Status != "finished" {
+		fmt.Print(".")
+		body, err = makeRequest("GET", url, nil, "0")
+		if err != nil {
+			logErr(err)
+		}
+
+		if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
+			logErr(err)
+		}
+	}
+
+	if !dataLatestSubmit.Data.CompileError {
+		fmt.Println("\nSucces! Score: ", dataLatestSubmit.Data.Score)
+	} else {
+		fmt.Println("Compilation failed! Score: 0")
+	}
+
 }
