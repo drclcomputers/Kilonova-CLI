@@ -15,6 +15,7 @@ To install Kilonova-CLI, ensure you have [Go 1.24.1](https://golang.org/dl/) ins
 
 ```sh
 git clone https://github.com/drclcomputers/Kilonova-CLI
+cd Kilonova-CLI
 go build
 ./kilocli
 ```
@@ -25,60 +26,10 @@ This command will download and build the Kilonova-CLI.
 
 ## Usage
 
-Once installed, you can use Kilonova-CLI to interact with the Kilonova platform.
-
-### Authenticate
-
-To authenticate with your Kilonova account:
-
+Once installed, you can use Kilonova-CLI to interact with the Kilonova platform. For detailed instructions on available commands and their usage, please run:
 ```sh
-<PROGRAM> signin <USERNAME> <PASSWORD>
+./kilocli help
 ```
-
-This command uses the credentials provided to log in.
-
-### Search for Problems
-
-To search for problems containing a specific keyword:
-
-```sh
-<PROGRAM> search <NAME, ID or nf (all of the problems available)>
-```
-
-
-### View Problem Statement
-
-To view the statement of a specific problem:
-
-```sh
-<PROGRAM> statement <ID> <RO or EN>
-```
-
-Replace `<RO or EN>` with the language you want to view the statement in.
-
-### Submit a Solution
-
-To submit a solution to a problem:
-
-```sh
-<PROGRAM> submit <ID> <LANGUAGE> <FILENAME>
-```
-
-Replace `<LANGUAGE>` with one of the available languages which can be seen by running
-```sh
-<PROGRAM> langs <ID>
-```
-and `<FILENAME>` with the path to your solution file.
-
-### Check Submission Status
-
-To check the status of your submissions:
-
-```sh
-<PROGRAM> submissions <ID>
-```
-
-This command retrieves and displays the results of your submissions.
 
 ## Contributing
 
@@ -95,6 +46,10 @@ Kilonova-CLI is licensed under the [MIT License](LICENSE).
 [Cobra](https://github.com/spf13/cobra)
 
 [Glamour](https://github.com/charmbracelet/glamour)
+
+[Bubbletea](https://github.com/charmbracelet/bubbletea)
+
+[Lipgloss](https://github.com/charmbracelet/lipgloss)
 
 ---
 
