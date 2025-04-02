@@ -14,6 +14,7 @@ import (
 	"math/rand/v2"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/spf13/cobra"
@@ -193,6 +194,37 @@ func createSource(cwd, lang string) {
 	}
 }
 
+func getName(problem_id string) string {
+	url := fmt.Sprintf(URL_PROBLEM, problem_id)
+	body, err := makeRequest("GET", url, nil, "0")
+	if err != nil {
+		logErr(err)
+		os.Exit(1)
+	}
+
+	var info info
+	if err := json.Unmarshal(body, &info); err != nil {
+		logErr(err)
+		os.Exit(1)
+	}
+	return info.Data.Name
+}
+
+func extractFunctionDeclarations(hFileContent string) []string {
+	re := regexp.MustCompile(`\s*(int|float|char|double)\s+(\w+)\s*\((.*)\);`)
+	matches := re.FindAllStringSubmatch(hFileContent, -1)
+
+	var declarations []string
+	for _, match := range matches {
+		if len(match) > 3 {
+			declaration := fmt.Sprintf("%s %s(%s)", match[1], match[2], match[3])
+			declarations = append(declarations, declaration)
+		}
+	}
+
+	return declarations
+}
+
 func initProject(problem_id, lang string) {
 	cwd, err := os.Getwd()
 	if err != nil {
@@ -232,6 +264,8 @@ func initProject(problem_id, lang string) {
 
 	if !ok {
 		fmt.Println("Problem is not available in the selected language!")
+		os.Chdir("..")
+		os.Remove(newFolder)
 		return
 	}
 
@@ -245,6 +279,47 @@ func initProject(problem_id, lang string) {
 	_ = os.Remove(archiveFilename)
 
 	moveFiles(cwd)
+
+	if strings.Contains(getName(problem_id), "interactiv") {
+		_ = os.Remove("Source.cpp")
+		files, err := os.ReadDir(cwd)
+		if err != nil {
+			logErr(err)
+		}
+		var headerFilename string
+
+		for _, file := range files {
+			if !file.IsDir() && filepath.Ext(file.Name()) == ".h" {
+				headerFilename = file.Name()
+				break
+			}
+		}
+
+		hFileContent, err := os.ReadFile(headerFilename)
+		if err != nil {
+			fmt.Println("Error reading header file:", err)
+			return
+		}
+
+		funcDecls := extractFunctionDeclarations(string(hFileContent))
+
+		cppFile, err := os.Create("Source.cpp")
+		if err != nil {
+			fmt.Println("Error creating .cpp file:", err)
+			return
+		}
+		defer cppFile.Close()
+
+		cppFile.WriteString("#include<iostream>\n#include \"myfunc.h\"\n\n")
+
+		for _, decl := range funcDecls {
+			cppFile.WriteString(decl + " {\n")
+			cppFile.WriteString("\n")
+			cppFile.WriteString("}\n\n")
+		}
+
+		cppFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
+	}
 
 }
 
