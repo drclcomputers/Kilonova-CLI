@@ -43,6 +43,8 @@ type userSolvedProblems struct {
 	} `json:"data"`
 }
 
+// cobra vars
+
 var signinCmd = &cobra.Command{
 	Use:   "signin [username] [password]",
 	Short: "Sign in to your account",
@@ -169,6 +171,7 @@ func init() {
 	rootCmd.AddCommand(resendEmailCmd)
 }
 
+// login
 func LoginForm() (string, string) {
 	var username, password string
 	form := huh.NewForm(
@@ -190,7 +193,6 @@ func LoginForm() (string, string) {
 	return username, password
 }
 
-// login
 func login(username, password string) {
 
 	formData := u.Values{
@@ -261,6 +263,7 @@ func logout() {
 	}
 }
 
+// get info about user
 func getBio(name string) string {
 	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", name))
 	if err != nil {
@@ -401,10 +404,12 @@ func extendSession() {
 
 }
 
+// return wether an account is admin
 func isAdmin(user_id string) bool {
 	return userGetDetails(user_id, "isadmin")
 }
 
+// Settings User
 func setBio(bio string) {
 	data := map[string]string{"bio": bio}
 
@@ -550,33 +555,6 @@ func resetPass(email string) {
 	fmt.Println(dataKN.Data)
 }
 
-func deleteUser() {
-	fmt.Println("Are you sure to delete your account? (Y/N)")
-	var resp string
-	fmt.Scan(&resp)
-
-	if resp != "Y" {
-		return
-	}
-
-	fmt.Println("Do you understand that this action is irreversible? (Y/N)")
-	fmt.Scan(&resp)
-
-	if resp != "Y" {
-		return
-	}
-
-	fmt.Println("Do you understand that you'll lose all of your data? (Y/N)")
-	fmt.Scan(&resp)
-
-	if resp != "Y" {
-		return
-	}
-
-	fmt.Println("Okay. Deleting account...")
-
-}
-
 func resendEmail() {
 	body, err := makeRequest("POST", URL_RESEND_MAIL, nil, "2")
 	if err != nil {
@@ -592,4 +570,51 @@ func resendEmail() {
 	}
 
 	fmt.Println(dataKN.Data)
+}
+
+func deleteUser() {
+	fmt.Print("Are you sure to delete your account? (Y/N) ")
+	var resp string
+	fmt.Scan(&resp)
+
+	if resp != "Y" {
+		return
+	}
+
+	fmt.Print("Do you understand that this action is irreversible? (Y/N) ")
+	fmt.Scan(&resp)
+
+	if resp != "Y" {
+		return
+	}
+
+	fmt.Print("Do you understand that you'll lose all of your data? (Y/N) ")
+	fmt.Scan(&resp)
+
+	if resp != "Y" {
+		return
+	}
+
+	fmt.Println("Deleting account...")
+	fmt.Println("Currently the KN api does not support deleting an account if you're not an admin.")
+
+	if !isAdmin("me") {
+		return
+	}
+
+	body, err := makeRequest("POST", URL_DELETE_USER, nil, "1")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	fmt.Println(dataKN.Data)
+
 }
