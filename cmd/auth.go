@@ -66,7 +66,7 @@ var userGetDetailsCmd = &cobra.Command{
 	Short: "Get details about a user.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		userGetDetails(args[0])
+		userGetDetails(args[0], "user")
 	},
 }
 
@@ -167,7 +167,7 @@ func logout() {
 	}
 }
 
-func userGetDetails(user_id string) {
+func userGetDetails(user_id, use_case string) bool {
 	var url string
 	if user_id == "me" {
 		url = URL_SELF
@@ -178,7 +178,7 @@ func userGetDetails(user_id string) {
 	body, err := makeRequest("GET", url, nil, "3")
 	if err != nil {
 		logErr(err)
-		return
+		return false
 	}
 
 	var dataUser userDetailResp
@@ -186,16 +186,21 @@ func userGetDetails(user_id string) {
 	err = json.Unmarshal(body, &dataUser)
 	if err != nil {
 		logErr(err)
-		return
+		return false
 	}
 
 	if dataUser.Data.DisplayName == "" {
 		dataUser.Data.DisplayName = "-"
 	}
 
-	fmt.Printf("ID: %d\nName: %s\nA.K.A: %s\nAdmin: %t\nProposer: %t\n\n",
-		dataUser.Data.Id, dataUser.Data.Name, dataUser.Data.DisplayName,
-		dataUser.Data.Admin, dataUser.Data.Proposer)
+	if use_case == "isadmin" {
+		return dataUser.Data.Admin
+	} else {
+		fmt.Printf("ID: %d\nName: %s\nA.K.A: %s\nAdmin: %t\nProposer: %t\n\n",
+			dataUser.Data.Id, dataUser.Data.Name, dataUser.Data.DisplayName,
+			dataUser.Data.Admin, dataUser.Data.Proposer)
+		return false
+	}
 }
 
 func userGetSolvedProblems(user_id string) {
@@ -280,4 +285,8 @@ func extendSession() {
 		fmt.Println(resp.Data)
 	}
 
+}
+
+func isAdmin(user_id string) bool {
+	return userGetDetails(user_id, "isadmin")
 }
