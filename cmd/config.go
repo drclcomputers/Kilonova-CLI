@@ -34,7 +34,7 @@ const (
 	URL_SELF_SET_BIO               = "https://kilonova.ro/api/user/self/setBio"
 	URL_CHANGE_EMAIL               = "https://kilonova.ro/api/user/changeEmail"
 	URL_CHANGE_PASS                = "https://kilonova.ro/api/user/changePassword"
-	URL_UPDATE_NAME                = "https://kilonova.ro/api/user/updateName"
+	URL_CHANGE_NAME                = "https://kilonova.ro/api/user/updateName"
 	URL_USER                       = "https://kilonova.ro/api/user/byID/%s"
 	URL_USER_PROBLEMS              = "https://kilonova.ro/api/user/byID/%s/solvedProblems"
 	URL_LANGS_PB                   = "https://kilonova.ro/api/problem/%s/languages"
@@ -49,7 +49,7 @@ const (
 	URL_STATEMENT                  = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
 	URL_ASSETS                     = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
 	userAgent                      = "KilonovaCLIClient/0.1"
-	help                           = "Kilonova CLI - ver 0.1.0\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
+	help                           = "Kilonova CLI - ver 0.1.5\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 )
 
 // TEXT MODEL
@@ -126,9 +126,14 @@ type userid struct {
 	} `json:"data"`
 }
 
-type KNResponse struct {
+type KNResponseRaw struct {
 	Status string          `json:"status"`
 	Data   json.RawMessage `json:"data"`
+}
+
+type KNResponse struct {
+	Status string `json:"status"`
+	Data   string `json:"data"`
 }
 
 func getUserID() string {
@@ -221,7 +226,7 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var respKN KNResponse
+		var respKN KNResponseRaw
 		if err := json.Unmarshal(data, &respKN); err != nil {
 			logErr(err)
 		}

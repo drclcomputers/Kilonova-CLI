@@ -21,7 +21,7 @@ import (
 
 var iniProjectCmd = &cobra.Command{
 	Use:   "init [Problem ID] [Language]",
-	Short: "Create a project, consisting of the statement, assets already downloaded and a source file for your chosen language.",
+	Short: "Create a project (statement, assets and source file for your chosen language)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		initProject(args[0], args[1])

@@ -1,3 +1,8 @@
+// Copyright (c) 2025 @drclcomputers. All rights reserved.
+//
+// This work is licensed under the terms of the MIT license.
+// For a copy, see <https://opensource.org/licenses/MIT>.
+
 package cmd
 
 import (
@@ -5,25 +10,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net/http"
 	u "net/url"
 	"os"
 	"path/filepath"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/spf13/cobra"
 )
-
-type signInResp struct {
-	Status string `json:"status"`
-	Data   string `json:"data"`
-}
-
-type extendResp struct {
-	Status string `json:"status"`
-	Data   string `json:"data"`
-}
 
 type userDetailResp struct {
 	Data struct {
@@ -88,12 +85,62 @@ var extendSessionCmd = &cobra.Command{
 	},
 }
 
+var setBioCmd = &cobra.Command{
+	Use:   "setbio [bio]",
+	Short: "Set your profile's bio.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		setBio(args[0])
+	},
+}
+
+var changeNameCmd = &cobra.Command{
+	Use:   "changename [new name] [password]",
+	Short: "Change your profile name.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		changeName(args[0], args[1])
+	},
+}
+
+var changePassCmd = &cobra.Command{
+	Use:   "changepass [old password] [new password]",
+	Short: "Change your account password.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		changePass(args[0], args[1])
+	},
+}
+
+var resetPassCmd = &cobra.Command{
+	Use:   "resetpass [email]",
+	Short: "Reset password via email when forgotten.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		resetPass(args[0])
+	},
+}
+
+var changeEmailCmd = &cobra.Command{
+	Use:   "changemail [new email] [password]",
+	Short: "Change your account email.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		changeEmail(args[0], args[1])
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(signinCmd)
 	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(userGetDetailsCmd)
 	rootCmd.AddCommand(extendSessionCmd)
 	rootCmd.AddCommand(userSolvedProblemsCmd)
+	rootCmd.AddCommand(setBioCmd)
+	rootCmd.AddCommand(changeNameCmd)
+	rootCmd.AddCommand(changePassCmd)
+	rootCmd.AddCommand(changeEmailCmd)
+	rootCmd.AddCommand(resetPassCmd)
 }
 
 // login
@@ -113,7 +160,7 @@ func login(username, password string) {
 		log.Fatal("Login failed: Invalid credentials!")
 	}
 
-	var response signInResp
+	var response KNResponse
 	if err := json.Unmarshal(body, &response); err != nil {
 		log.Fatalf("Error parsing response: %v", err)
 	}
@@ -167,6 +214,25 @@ func logout() {
 	}
 }
 
+func getBio(name string) string {
+	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", name))
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer res.Body.Close()
+
+	// Parse the HTML
+	doc, err := goquery.NewDocumentFromReader(res.Body)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	// Find the About Me section and extract text from <p>
+	bio := doc.Find("div.segment-panel.reset-list.statement-content.enhance-tables p").First().Text()
+
+	return bio
+}
+
 func userGetDetails(user_id, use_case string) bool {
 	var url string
 	if user_id == "me" {
@@ -196,8 +262,9 @@ func userGetDetails(user_id, use_case string) bool {
 	if use_case == "isadmin" {
 		return dataUser.Data.Admin
 	} else {
-		fmt.Printf("ID: %d\nName: %s\nA.K.A: %s\nAdmin: %t\nProposer: %t\n\n",
-			dataUser.Data.Id, dataUser.Data.Name, dataUser.Data.DisplayName,
+		bio := getBio(dataUser.Data.Name)
+		fmt.Printf("ID: %d\nName: %s\nA.K.A: %s\nBio: %s\nAdmin: %t\nProposer: %t\n\n",
+			dataUser.Data.Id, dataUser.Data.Name, dataUser.Data.DisplayName, bio,
 			dataUser.Data.Admin, dataUser.Data.Proposer)
 		return false
 	}
@@ -267,7 +334,7 @@ func extendSession() {
 		return
 	}
 
-	var resp extendResp
+	var resp KNResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
 		fmt.Printf("error unmarshalling response: %s", err)
 		return
@@ -289,4 +356,180 @@ func extendSession() {
 
 func isAdmin(user_id string) bool {
 	return userGetDetails(user_id, "isadmin")
+}
+
+func setBio(bio string) {
+	data := map[string]string{"bio": bio}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error encoding JSON:", err)
+		return
+	}
+
+	body, err := makeRequest("POST", URL_SELF_SET_BIO, bytes.NewBuffer(jsonData), "2")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if dataKN.Status == "success" {
+		fmt.Println("Success! Bio changed!")
+	} else {
+		fmt.Println("Error: Failed to change bio!")
+	}
+}
+
+func changeName(newName, password string) {
+	data := map[string]string{"newName": newName, "password": password}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error encoding JSON:", err)
+		return
+	}
+
+	body, err := makeRequest("POST", URL_CHANGE_NAME, bytes.NewBuffer(jsonData), "2")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if dataKN.Status == "success" {
+		fmt.Println("Success! Name changed!")
+	} else {
+		fmt.Println("Error: Failed to change name!")
+	}
+}
+
+func changePass(oldpass, newpass string) {
+	data := map[string]string{"old_password": oldpass, "password": newpass}
+
+	jsonData, err := json.Marshal(data)
+	if err != nil {
+		fmt.Println("Error encoding JSON:", err)
+		return
+	}
+
+	body, err := makeRequest("POST", URL_CHANGE_PASS, bytes.NewBuffer(jsonData), "2")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if dataKN.Status == "success" {
+		fmt.Println("Success! password changed! You'll have to login again with your new credentials!")
+		logout()
+	} else {
+		fmt.Println("Error: Failed to change password!")
+	}
+}
+
+func changeEmail(email, password string) {
+
+	formData := u.Values{}
+	formData.Set("email", email)
+	formData.Set("password", password)
+
+	data := []byte(formData.Encode())
+
+	body, err := makeRequest("POST", URL_CHANGE_EMAIL, bytes.NewBuffer(data), "1")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if dataKN.Status == "success" {
+		fmt.Println("Success! Email changed!")
+	} else {
+		fmt.Println("Error: Failed to change email!")
+	}
+}
+
+func resetPass(email string) {
+	_, hasToken := readToken()
+
+	if hasToken {
+		fmt.Println("You have to be logged out to perform this action!")
+		return
+	}
+
+	formData := u.Values{}
+	formData.Set("email", email)
+
+	data := []byte(formData.Encode())
+
+	body, err := makeRequest("POST", URL_CHANGE_PASS, bytes.NewBuffer(data), "1")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if dataKN.Status == "success" {
+		fmt.Println(dataKN.Data)
+	} else {
+		fmt.Println(dataKN.Data)
+	}
+}
+
+func deleteUser() {
+	fmt.Println("Are you sure to delete your account? (Y/N)")
+	var resp string
+	fmt.Scan(resp)
+
+	if resp != "Y" {
+		return
+	}
+
+	fmt.Println("Do you understand that this action is irreversible? (Y/N)")
+	fmt.Scan(resp)
+
+	if resp != "Y" {
+		return
+	}
+
+	fmt.Println("Do you understand that tou'll lose all of your data? (Y/N)")
+	fmt.Scan(resp)
+
+	if resp != "Y" {
+		return
+	}
+
+	fmt.Println("Okay. Deleting account...")
+
 }
