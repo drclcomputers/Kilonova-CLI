@@ -13,6 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -51,7 +52,10 @@ var signinCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		username, password := LoginForm()
-		login(username, password)
+		action := func() { login(username, password) }
+		if err := spinner.New().Title("Logging in...").Action(action).Run(); err != nil {
+			log.Fatal(err)
+		}
 	},
 }
 
