@@ -48,6 +48,7 @@ const (
 	STAT_FILENAME_EN               = "statement-en.md"
 	URL_STATEMENT                  = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
 	URL_ASSETS                     = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
+	URL_RESEND_MAIL                = "https://kilonova.ro/api/user/resendEmail"
 	userAgent                      = "KilonovaCLIClient/0.1"
 	help                           = "Kilonova CLI - ver 0.1.5\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 )

@@ -18,6 +18,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -350,16 +351,21 @@ func uploadCode(id, lang, file string) {
 		logErr(err)
 	}
 
-	for dataLatestSubmit.Data.Status != "finished" {
-		fmt.Print(".")
-		body, err = makeRequest("GET", url, nil, "0")
-		if err != nil {
-			logErr(err)
-		}
+	action := func() {
+		for dataLatestSubmit.Data.Status != "finished" {
+			fmt.Print(".")
+			body, err = makeRequest("GET", url, nil, "0")
+			if err != nil {
+				logErr(err)
+			}
 
-		if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
-			logErr(err)
+			if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
+				logErr(err)
+			}
 		}
+	}
+	if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+		log.Fatal(err)
 	}
 
 	if !dataLatestSubmit.Data.CompileError {

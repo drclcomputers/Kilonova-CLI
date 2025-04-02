@@ -127,12 +127,30 @@ var resetPassCmd = &cobra.Command{
 	},
 }
 
+var deleteUserCmd = &cobra.Command{
+	Use:   "deleteuser",
+	Short: "Delete your Kilonova account.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		deleteUser()
+	},
+}
+
 var changeEmailCmd = &cobra.Command{
 	Use:   "changemail [new email] [password]",
 	Short: "Change your account email.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		changeEmail(args[0], args[1])
+	},
+}
+
+var resendEmailCmd = &cobra.Command{
+	Use:   "resendemail",
+	Short: "Resend verification mail.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		resendEmail()
 	},
 }
 
@@ -147,6 +165,8 @@ func init() {
 	rootCmd.AddCommand(changePassCmd)
 	rootCmd.AddCommand(changeEmailCmd)
 	rootCmd.AddCommand(resetPassCmd)
+	rootCmd.AddCommand(deleteUserCmd)
+	rootCmd.AddCommand(resendEmailCmd)
 }
 
 func LoginForm() (string, string) {
@@ -527,31 +547,27 @@ func resetPass(email string) {
 		return
 	}
 
-	if dataKN.Status == "success" {
-		fmt.Println(dataKN.Data)
-	} else {
-		fmt.Println(dataKN.Data)
-	}
+	fmt.Println(dataKN.Data)
 }
 
 func deleteUser() {
 	fmt.Println("Are you sure to delete your account? (Y/N)")
 	var resp string
-	fmt.Scan(resp)
+	fmt.Scan(&resp)
 
 	if resp != "Y" {
 		return
 	}
 
 	fmt.Println("Do you understand that this action is irreversible? (Y/N)")
-	fmt.Scan(resp)
+	fmt.Scan(&resp)
 
 	if resp != "Y" {
 		return
 	}
 
-	fmt.Println("Do you understand that tou'll lose all of your data? (Y/N)")
-	fmt.Scan(resp)
+	fmt.Println("Do you understand that you'll lose all of your data? (Y/N)")
+	fmt.Scan(&resp)
 
 	if resp != "Y" {
 		return
@@ -559,4 +575,21 @@ func deleteUser() {
 
 	fmt.Println("Okay. Deleting account...")
 
+}
+
+func resendEmail() {
+	body, err := makeRequest("POST", URL_RESEND_MAIL, nil, "2")
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	var dataKN KNResponse
+	err = json.Unmarshal(body, &dataKN)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	fmt.Println(dataKN.Data)
 }
