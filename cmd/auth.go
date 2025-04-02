@@ -12,6 +12,7 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh"
 	"github.com/spf13/cobra"
 )
 
@@ -47,9 +48,10 @@ type userSolvedProblems struct {
 var signinCmd = &cobra.Command{
 	Use:   "signin [username] [password]",
 	Short: "Sign in to your account",
-	Args:  cobra.ExactArgs(2),
+	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		login(args[0], args[1])
+		username, password := LoginForm()
+		login(username, password)
 	},
 }
 
@@ -94,6 +96,27 @@ func init() {
 	rootCmd.AddCommand(userGetDetailsCmd)
 	rootCmd.AddCommand(extendSessionCmd)
 	rootCmd.AddCommand(userSolvedProblemsCmd)
+}
+
+func LoginForm() (string, string) {
+	var username, password string
+	form := huh.NewForm(
+		huh.NewGroup(
+			huh.NewInput().
+				Title("Username:").
+				Value(&username),
+			huh.NewInput().
+				Title("Password:").
+				Value(&password).
+				EchoMode(huh.EchoModePassword),
+		),
+	)
+
+	if err := form.Run(); err != nil {
+		log.Fatal(err)
+	}
+
+	return username, password
 }
 
 // login
