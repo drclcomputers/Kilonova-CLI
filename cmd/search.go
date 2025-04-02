@@ -25,7 +25,7 @@ type Problem struct {
 }
 
 var searchCmd = &cobra.Command{
-	Use:   "search [ID, NAME or nf (all problems available)]",
+	Use:   "search [ID, NAME or all (all problems available)]",
 	Short: "Search for problems by ID or name.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
@@ -51,7 +51,7 @@ type search struct {
 }
 
 func searchProblems(problem_name string) {
-	if problem_name == "nf" {
+	if problem_name == "all" {
 		problem_name = ""
 	}
 

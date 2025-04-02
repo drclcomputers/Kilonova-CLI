@@ -7,8 +7,11 @@ package cmd
 
 import (
 	"archive/zip"
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"io"
+	"math/rand/v2"
 	"os"
 	"path/filepath"
 	"strings"
@@ -25,8 +28,18 @@ var iniProjectCmd = &cobra.Command{
 	},
 }
 
+var getRandPbCmd = &cobra.Command{
+	Use:   "random",
+	Short: "Get random problem to solve.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		getRandPb()
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(iniProjectCmd)
+	rootCmd.AddCommand(getRandPbCmd)
 }
 
 func CopyFile(src, dest string) error {
@@ -233,4 +246,37 @@ func initProject(problem_id, lang string) {
 
 	moveFiles(cwd)
 
+}
+
+func nrPbs() int {
+	searchData := map[string]interface{}{
+		"name_fuzzy": "",
+		"offset":     0,
+	}
+
+	jsonData, err := json.Marshal(searchData)
+	if err != nil {
+		fmt.Println("Error marshaling JSON:", err)
+	}
+
+	body, err := makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
+	if err != nil {
+		logErr(err)
+	}
+
+	var data search
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		fmt.Println("Error unmarshaling JSON:", err)
+		os.Exit(1)
+	}
+
+	return data.Data.Count
+
+}
+
+func getRandPb() {
+	//min := 1
+	max := nrPbs()
+	fmt.Printf("Your random problem's ID: #%d\n", rand.IntN(max)+1)
 }
