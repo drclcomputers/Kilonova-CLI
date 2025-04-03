@@ -14,6 +14,8 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/lipgloss"
+	"github.com/eiannone/keyboard"
 	"github.com/spf13/cobra"
 )
 
@@ -35,6 +37,51 @@ var searchCmd = &cobra.Command{
 
 func init() {
 	rootCmd.AddCommand(searchCmd)
+}
+
+// TABLE
+
+var chosenPb string = ""
+
+var globalRows []table.Row
+
+type modelsearch struct {
+	table table.Model
+}
+
+func (m modelsearch) Init() tea.Cmd {
+	return nil
+}
+
+func (m modelsearch) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	switch msg := msg.(type) {
+	case tea.KeyMsg:
+		switch msg.String() {
+		case "q":
+			return m, tea.Quit
+		case "esc":
+			return m, tea.Quit
+		case "enter":
+			return m.handleSelection()
+		}
+	}
+
+	var cmd tea.Cmd
+	m.table, cmd = m.table.Update(msg)
+	return m, cmd
+}
+
+func (m modelsearch) handleSelection() (tea.Model, tea.Cmd) {
+	selectedIndex := m.table.Cursor()
+	selectedProblem := globalRows[selectedIndex]
+
+	chosenPb = string(selectedProblem[0])
+
+	return m, tea.Quit
+}
+
+func (m modelsearch) View() string {
+	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
 }
 
 // search problems
@@ -123,6 +170,8 @@ func searchProblems(problem_name string) {
 		}
 	}
 
+	globalRows = rows
+
 	columns := []table.Column{
 		{Title: "ID", Width: 5},
 		{Title: "Name", Width: 20},
@@ -139,8 +188,44 @@ func searchProblems(problem_name string) {
 
 	t.SetStyles(table.DefaultStyles())
 
-	p := tea.NewProgram(model{table: t})
+	p := tea.NewProgram(modelsearch{table: t}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Error running program: %v", err)
+	}
+
+	if chosenPb != "" {
+		var choice string = ""
+		fmt.Print("\nDo you wish to see the statement in RO(r) or EN(e): ")
+		//fmt.Scanf("%s", &choice)\
+
+		if err := keyboard.Open(); err != nil {
+			logErr(err)
+		}
+		defer keyboard.Close()
+
+		for choice == "" {
+			key, _, err := keyboard.GetSingleKey()
+			if err != nil {
+				log.Fatal(err)
+			}
+
+			switch {
+			case key == rune(keyboard.KeyEsc):
+				choice = "ESC"
+			case key == rune('r') || key == rune('R'):
+				choice = "RO"
+			case key == rune('e') || key == rune('E'):
+				choice = "EN"
+			default:
+				choice = "ESC"
+			}
+
+		}
+
+		if choice == "ESC" {
+			return
+		}
+
+		printStatement(chosenPb, choice)
 	}
 }

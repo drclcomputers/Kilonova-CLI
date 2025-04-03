@@ -174,7 +174,7 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 
 	t.SetStyles(table.DefaultStyles())
 
-	p := tea.NewProgram(model{table: t})
+	p := tea.NewProgram(model{table: t}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
 		log.Fatalf("Error running program: %v", err)
 	}

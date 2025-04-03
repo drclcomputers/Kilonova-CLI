@@ -15,6 +15,7 @@ require (
 	github.com/charmbracelet/huh v0.6.0
 	github.com/charmbracelet/huh/spinner v0.0.0-20250331173942-310cd4a379ac
 	github.com/charmbracelet/lipgloss v1.1.0
+	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
 	github.com/spf13/cobra v1.9.1
 )
 
