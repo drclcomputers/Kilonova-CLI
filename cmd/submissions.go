@@ -204,7 +204,7 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 		table.WithColumns(columns),
 		table.WithRows(rows),
 		table.WithFocused(true),
-		table.WithHeight(10),
+		table.WithHeight(20),
 	)
 
 	t.SetStyles(table.DefaultStyles())
