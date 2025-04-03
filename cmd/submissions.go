@@ -12,10 +12,12 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
+	"net/http"
 	"os"
 	"strconv"
 	"time"
 
+	"github.com/PuerkitoBio/goquery"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh/spinner"
@@ -231,6 +233,25 @@ func printDetailsSubmissions(problem_id, user_id, submission_id string) {
 				fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\n",
 					problem.Max_memory, problem.Max_time,
 					problem.Compile_error, problem.Compile_message)
+
+				fmt.Println("Code:")
+				url = fmt.Sprintf(URL_GET_CODE, submission_id)
+
+				resp, err := http.Get(url)
+				if err != nil {
+					log.Fatal(err)
+				}
+				defer resp.Body.Close()
+
+				doc, err := goquery.NewDocumentFromReader(resp.Body)
+				if err != nil {
+					log.Fatal(err)
+				}
+
+				codeText := doc.Find(".code-wrapper pre code").Text()
+
+				fmt.Println(codeText)
+
 				return
 			}
 		}
