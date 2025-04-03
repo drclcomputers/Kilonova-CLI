@@ -12,12 +12,10 @@ import (
 	"io"
 	"log"
 	"mime/multipart"
-	"net/http"
 	"os"
 	"strconv"
 	"time"
 
-	"github.com/PuerkitoBio/goquery"
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh/spinner"
@@ -235,22 +233,10 @@ func printDetailsSubmissions(problem_id, user_id, submission_id string) {
 					problem.Compile_error, problem.Compile_message)
 
 				fmt.Println("Code:")
-				url = fmt.Sprintf(URL_GET_CODE, submission_id)
 
-				resp, err := http.Get(url)
-				if err != nil {
-					log.Fatal(err)
-				}
-				defer resp.Body.Close()
+				//I have no f idea how to get the source code of a submission. I have spent 12 hours investigating this. Someone, please add this.
 
-				doc, err := goquery.NewDocumentFromReader(resp.Body)
-				if err != nil {
-					log.Fatal(err)
-				}
-
-				codeText := doc.Find(".code-wrapper pre code").Text()
-
-				fmt.Println(codeText)
+				//fmt.Println(codeText)
 
 				return
 			}
