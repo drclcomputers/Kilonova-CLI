@@ -7,11 +7,13 @@ package cmd
 
 import (
 	"bytes"
+	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io"
 	"log"
 	"mime/multipart"
+	u "net/url"
 	"os"
 	"strconv"
 	"time"
@@ -50,11 +52,11 @@ var printSubmissionsCmd = &cobra.Command{
 }
 
 var printSubmInfo = &cobra.Command{
-	Use:   "submissioninfo [Problem ID] [User ID] [Submission ID]",
+	Use:   "submissioninfo [Submission ID]",
 	Short: "View a detailed description of a sent submission.",
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		printDetailsSubmissions(args[0], args[1], args[2])
+		printDetailsSubmissions(args[0])
 	},
 }
 
@@ -81,13 +83,41 @@ type submissionlist struct {
 			Compile_error   bool    `json:"compile_error"`
 			Compile_message string  `json:"compile_message"`
 		}
-		Count int `json:"count"`
+		Count int    `json:"count"`
+		Code  string `json:"code"`
+	} `json:"data"`
+}
+
+type submissiondetails struct {
+	Status string `json:"status"`
+	Data   struct {
+		UserID          int     `json:"user_id"`
+		ProblemID       int     `json:"problem_id"`
+		Id              int     `json:"id"`
+		Created_at      string  `json:"created_at"`
+		Language        string  `json:"language"`
+		Score           float64 `json:"score"`
+		Max_memory      int     `json:"max_memory"`
+		Max_time        float64 `json:"max_time"`
+		Compile_error   bool    `json:"compile_error"`
+		Compile_message string  `json:"compile_message"`
+		Code            string  `json:"code"`
 	} `json:"data"`
 }
 
 func printSubmissions(problem_id, user_id, fpag, lpag string) {
 	if user_id == "me" {
 		user_id = getUserID()
+	}
+
+	if fpag > lpag {
+		fmt.Println("First page cannot be bigger than the last page!")
+		return
+	}
+
+	if fpag < strconv.Itoa(0) || lpag < strconv.Itoa(0) {
+		fmt.Println("Pages need to be positive numbers, different from 0!")
+		return
 	}
 
 	//get submissions on problem
@@ -181,71 +211,63 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 
 }
 
-func printDetailsSubmissions(problem_id, user_id, submission_id string) {
-
-	if user_id == "me" {
-		user_id = getUserID()
-	}
+func printDetailsSubmissions(submission_id string) {
 
 	//get submissions on problem
 
-	var datasub submissionlist
+	var datasub submissiondetails
 
-	cnt := 50
-
-	ok := false
-
-	for offset := 0; offset < cnt; offset += 50 {
-		url := fmt.Sprintf(URL_SUBMISSION_LIST, offset, problem_id, user_id)
-
-		body, err := makeRequest("GET", url, nil, "1")
-		if err != nil {
-			logErr(err)
-			return
-		}
-
-		err = json.Unmarshal(body, &datasub)
-		if err != nil {
-			logErr(err)
-			return
-		}
-
-		cnt = datasub.Data.Count
-
-		for _, problem := range datasub.Data.Submissions {
-			if nr, err := strconv.Atoi(submission_id); err == nil && problem.Id == nr {
-				ok = true
-
-				parsedTime, err := time.Parse(time.RFC3339Nano, problem.Created_at)
-				formattedTime := parsedTime.Format("2006-01-02 15:04:05")
-
-				if err != nil {
-					logErr(err)
-					return
-				}
-				problemInfo(problem_id)
-
-				fmt.Printf("\nSubmission ID: #%d\nCreated: %s\nLanguage: %s\nScore: %.0f\n",
-					problem.Id, formattedTime,
-					problem.Language, problem.Score)
-				fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\n",
-					problem.Max_memory, problem.Max_time,
-					problem.Compile_error, problem.Compile_message)
-
-				fmt.Println("Code:")
-
-				//I have no f idea how to get the source code of a submission. I have spent 12 hours investigating this. Someone, please add this.
-
-				//fmt.Println(codeText)
-
-				return
-			}
-		}
+	subsid, err := strconv.Atoi(submission_id)
+	if err != nil {
+		logErr(err)
 	}
 
-	if !ok {
-		fmt.Println("No submission for these parameters were found!")
+	url := fmt.Sprintf(URL_LATEST_SUBMISSION, subsid)
+
+	formData := u.Values{
+		"id": {submission_id},
 	}
+
+	body, err := makeRequest("GET", url, bytes.NewBufferString(formData.Encode()), "0")
+	if err != nil {
+		log.Fatalf("Error: %v", err)
+	}
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	err = json.Unmarshal(body, &datasub)
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	if datasub.Status != "success" {
+		fmt.Println("error: ", datasub.Status)
+		return
+	}
+
+	parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.Created_at)
+	formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+
+	if err != nil {
+		logErr(err)
+		return
+	}
+
+	pbid := strconv.Itoa(datasub.Data.ProblemID)
+
+	fmt.Println(problemInfo(pbid))
+
+	code, _ := b64.StdEncoding.DecodeString(datasub.Data.Code)
+
+	fmt.Printf("\nSubmission ID: #%d\nCreated: %s\nLanguage: %s\nScore: %.0f\n",
+		datasub.Data.Id, formattedTime,
+		datasub.Data.Language, datasub.Data.Score)
+	fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\nCode:\n%s\n",
+		datasub.Data.Max_memory, datasub.Data.Max_time,
+		datasub.Data.Compile_error, datasub.Data.Compile_message, code)
 }
 
 // upload code

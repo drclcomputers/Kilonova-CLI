@@ -106,7 +106,7 @@ func problemInfo(id string) string {
 		logErr(err)
 		os.Exit(1)
 	}
-	return fmt.Sprintf("Name: %s\n\nID: #%s\n\nTime Limit: %.2fs\n\nMemory Limit: %dKB\n\nSource Size: %dKB\n\nCredits: %s\n\n",
+	return fmt.Sprintf("Name: %s\nID: #%s\nTime Limit: %.2fs\nMemory Limit: %dKB\nSource Size: %dKB\nCredits: %s\n",
 		info.Data.Name, id, info.Data.Time, info.Data.MemoryLimit,
 		info.Data.SourceSize, info.Data.SourceCredits)
 

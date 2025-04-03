@@ -131,10 +131,10 @@ var resetPassCmd = &cobra.Command{
 
 var deleteUserCmd = &cobra.Command{
 	Use:   "deleteuser",
-	Short: "Delete your Kilonova account.",
+	Short: "Delete your Kilonova account. (Currently not working in API V1)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		deleteUser()
+		//deleteUser()
 	},
 }
 
@@ -156,6 +156,15 @@ var resendEmailCmd = &cobra.Command{
 	},
 }
 
+var amILoggedInCmd = &cobra.Command{
+	Use:   "amilogged",
+	Short: "Check wether you're logged in or not.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(amILoggedIn())
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(signinCmd)
 	rootCmd.AddCommand(logoutCmd)
@@ -169,6 +178,7 @@ func init() {
 	rootCmd.AddCommand(resetPassCmd)
 	rootCmd.AddCommand(deleteUserCmd)
 	rootCmd.AddCommand(resendEmailCmd)
+	rootCmd.AddCommand(amILoggedInCmd)
 }
 
 // login
@@ -370,10 +380,15 @@ func userGetSolvedProblems(user_id string) {
 
 	t.SetStyles(table.DefaultStyles())
 
-	p := tea.NewProgram(model{table: t})
+	p := tea.NewProgram(model{table: t}, tea.WithAltScreen())
 	if t, err := p.Run(); err != nil {
 		log.Fatalf("Error running program: %s %v", t, err)
 	}
+}
+
+func amILoggedIn() bool {
+	_, hasToken := readToken()
+	return hasToken
 }
 
 // extend session
