@@ -62,7 +62,10 @@ var logoutCmd = &cobra.Command{
 	Use:   "logout",
 	Short: "Log out of your account",
 	Run: func(cmd *cobra.Command, args []string) {
-		logout()
+		action := func() { logout() }
+		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+			logErr(err)
+		}
 	},
 }
 
@@ -165,6 +168,15 @@ var amILoggedInCmd = &cobra.Command{
 	},
 }
 
+var amIAdminCmd = &cobra.Command{
+	Use:   "amiadmin",
+	Short: "Check wether you're an admin.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		fmt.Println(isAdmin("me"))
+	},
+}
+
 func init() {
 	rootCmd.AddCommand(signinCmd)
 	rootCmd.AddCommand(logoutCmd)
@@ -179,6 +191,7 @@ func init() {
 	rootCmd.AddCommand(deleteUserCmd)
 	rootCmd.AddCommand(resendEmailCmd)
 	rootCmd.AddCommand(amILoggedInCmd)
+	rootCmd.AddCommand(amIAdminCmd)
 }
 
 // login

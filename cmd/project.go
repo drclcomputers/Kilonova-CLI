@@ -17,6 +17,7 @@ import (
 	"regexp"
 	"strings"
 
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -25,7 +26,10 @@ var iniProjectCmd = &cobra.Command{
 	Short: "Create a project (statement, assets and source file for your chosen language)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		initProject(args[0], args[1])
+		action := func() { initProject(args[0], args[1]) }
+		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+			logErr(err)
+		}
 	},
 }
 

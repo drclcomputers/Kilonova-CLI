@@ -15,6 +15,7 @@ import (
 	"mime/multipart"
 	u "net/url"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -23,6 +24,8 @@ import (
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
+
+var download bool = false
 
 var uploadCodeCmd = &cobra.Command{
 	Use:   "submit [ID] [LANGUAGE] [FILENAME]",
@@ -51,7 +54,7 @@ var printSubmissionsCmd = &cobra.Command{
 	},
 }
 
-var printSubmInfo = &cobra.Command{
+var printSubmInfoCmd = &cobra.Command{
 	Use:   "submissioninfo [Submission ID]",
 	Short: "View a detailed description of a sent submission.",
 	Args:  cobra.ExactArgs(1),
@@ -64,7 +67,9 @@ func init() {
 	rootCmd.AddCommand(checkLangsCmd)
 	rootCmd.AddCommand(uploadCodeCmd)
 	rootCmd.AddCommand(printSubmissionsCmd)
-	rootCmd.AddCommand(printSubmInfo)
+	rootCmd.AddCommand(printSubmInfoCmd)
+
+	printSubmInfoCmd.Flags().BoolVarP(&download, "download_source", "d", true, "Download the source code of a submission.")
 }
 
 // print submissions
@@ -211,6 +216,25 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 
 }
 
+func downloadSource(submission_id, code string) {
+	homedir, err := os.Getwd()
+	if err != nil {
+		logErr(err)
+	}
+	configDir := filepath.Join(homedir)
+	downFile := filepath.Join(configDir, "source_"+submission_id+".txt")
+	file, err := os.Create(downFile)
+	if err != nil {
+		fmt.Println("Error creating file:", err)
+		return
+	}
+	defer file.Close()
+
+	if err := os.WriteFile(downFile, []byte(code), 0644); err != nil {
+		log.Fatalf("Error writing source code to file: %v", err)
+	}
+}
+
 func printDetailsSubmissions(submission_id string) {
 
 	//get submissions on problem
@@ -268,6 +292,13 @@ func printDetailsSubmissions(submission_id string) {
 	fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\nCode:\n%s\n",
 		datasub.Data.Max_memory, datasub.Data.Max_time,
 		datasub.Data.Compile_error, datasub.Data.Compile_message, code)
+
+	action := func() { downloadSource(submission_id, string(code)) }
+	if download {
+		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+			log.Fatal(err)
+		}
+	}
 }
 
 // upload code

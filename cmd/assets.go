@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
 
@@ -12,7 +13,10 @@ var getAssetsCmd = &cobra.Command{
 	Short: "Download the assets for a problem.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		getAssets(args[0])
+		action := func() { getAssets(args[0]) }
+		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+			logErr(err)
+		}
 	},
 }
 
