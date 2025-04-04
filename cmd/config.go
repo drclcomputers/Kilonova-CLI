@@ -52,7 +52,81 @@ const (
 	URL_DELETE_USER                = "https://kilonova.ro/api/user/moderation/deleteUser"
 	userAgent                      = "KilonovaCLIClient/0.1"
 	help                           = "Kilonova CLI - ver 0.1.5\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
+	XMLCBPStruct                   = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+<CodeBlocks_project_file>
+	<FileVersion major="1" minor="6" />
+	<Project>
+		<Option title="%s" />
+		<Option pch_mode="2" />
+		<Option compiler="gcc" />
+		<Build>
+			<Target title="Debug">
+				<Option output="bin/Debug/probleme" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Debug/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-g" />
+				</Compiler>
+			</Target>
+			<Target title="Release">
+				<Option output="bin/Release/probleme" prefix_auto="1" extension_auto="1" />
+				<Option object_output="obj/Release/" />
+				<Option type="1" />
+				<Option compiler="gcc" />
+				<Compiler>
+					<Add option="-O2" />
+				</Compiler>
+				<Linker>
+					<Add option="-s" />
+				</Linker>
+			</Target>
+		</Build>
+		<Compiler>
+			<Add option="-Wall" />
+			<Add option="-fexceptions" />
+		</Compiler>
+		<Unit filename="Source.cpp" />
+		<Extensions />
+	</Project>
+</CodeBlocks_project_file>
+`
 )
+
+var helloWorldprog = []string{
+	`#include <stdio.h>
+int main() {
+    printf("Hello, World!\n");
+    return 0;
+}`,
+	`#include <iostream>
+int main() {
+    std::cout << "Hello, World!" << std::endl;
+    return 0;
+}`,
+	`package main
+import "fmt"
+func main() {
+    fmt.Println("Hello, World!")
+}`,
+	`fun main() {
+    println("Hello, World!")
+}`,
+	`console.log("Hello, World!");`,
+	`program HelloWorld;
+begin
+    writeln('Hello, World!');
+end.
+`,
+	`<?php
+echo "Hello, World!\n";
+?>
+`, `print("Hello, World!")
+`, `fn main() {
+    println!("Hello, World!");
+}
+`,
+}
 
 // TEXT MODEL
 

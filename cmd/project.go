@@ -21,7 +21,9 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var iniProjectCmd = &cobra.Command{
+var cbp bool = false
+
+var initProjectCmd = &cobra.Command{
 	Use:   "init [Problem ID] [Language]",
 	Short: "Create a project (statement, assets and source file for your chosen language)",
 	Args:  cobra.ExactArgs(2),
@@ -43,8 +45,10 @@ var getRandPbCmd = &cobra.Command{
 }
 
 func init() {
-	rootCmd.AddCommand(iniProjectCmd)
+	rootCmd.AddCommand(initProjectCmd)
 	rootCmd.AddCommand(getRandPbCmd)
+
+	initProjectCmd.Flags().BoolVarP(&cbp, "cbp_project", "b", true, "Create a codeblocks project.")
 }
 
 func CopyFile(src, dest string) error {
@@ -129,39 +133,17 @@ func Unzip(src string, dest string) error {
 	return nil
 }
 
-var helloWorldprog = []string{
-	`#include <stdio.h>
-int main() {
-    printf("Hello, World!\n");
-    return 0;
-}`,
-	`#include <iostream>
-int main() {
-    std::cout << "Hello, World!" << std::endl;
-    return 0;
-}`,
-	`package main
-import "fmt"
-func main() {
-    fmt.Println("Hello, World!")
-}`,
-	`fun main() {
-    println("Hello, World!")
-}`,
-	`console.log("Hello, World!");`,
-	`program HelloWorld;
-begin
-    writeln('Hello, World!');
-end.
-`,
-	`<?php
-echo "Hello, World!\n";
-?>
-`, `print("Hello, World!")
-`, `fn main() {
-    println!("Hello, World!");
-}
-`,
+func createCBPProject(name string) {
+	xmlCBP := fmt.Sprintf(XMLCBPStruct, name)
+
+	File, err := os.Create(fmt.Sprintf("%s.cbp", name))
+	if err != nil {
+		fmt.Println("Error creating .cbp file:", err)
+		return
+	}
+	defer File.Close()
+
+	File.WriteString(xmlCBP)
 }
 
 // 0-C 1-CPP 2-GO 3-Kotlin 4-JS 5-PAS 6-PHP 7-Py 8-Rust
@@ -323,6 +305,10 @@ func initProject(problem_id, lang string) {
 		}
 
 		cppFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
+	}
+
+	if cbp {
+		createCBPProject(problem_id)
 	}
 
 }
