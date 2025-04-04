@@ -22,6 +22,7 @@ import (
 )
 
 var cbp bool = false
+var cmake bool = false
 
 var initProjectCmd = &cobra.Command{
 	Use:   "init [Problem ID] [Language]",
@@ -49,6 +50,7 @@ func init() {
 	rootCmd.AddCommand(getRandPbCmd)
 
 	initProjectCmd.Flags().BoolVarP(&cbp, "cbp_project", "b", true, "Create a codeblocks project.")
+	initProjectCmd.Flags().BoolVarP(&cmake, "cmake_project", "c", true, "Create cmake project.")
 }
 
 func CopyFile(src, dest string) error {
@@ -144,6 +146,19 @@ func createCBPProject(name string) {
 	defer File.Close()
 
 	File.WriteString(xmlCBP)
+}
+
+func createCMAKEProject(name string) {
+	cmakeTXT := fmt.Sprintf(CMAKEStruct, name, name)
+
+	File, err := os.Create("CMakeLists.txt")
+	if err != nil {
+		fmt.Println("Error creating \"CMakeLists.txt\":", err)
+		return
+	}
+	defer File.Close()
+
+	File.WriteString(cmakeTXT)
 }
 
 // 0-C 1-CPP 2-GO 3-Kotlin 4-JS 5-PAS 6-PHP 7-Py 8-Rust
@@ -309,6 +324,10 @@ func initProject(problem_id, lang string) {
 
 	if cbp {
 		createCBPProject(problem_id)
+	}
+
+	if cmake {
+		createCMAKEProject(problem_id)
 	}
 
 }

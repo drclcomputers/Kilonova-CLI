@@ -91,6 +91,9 @@ const (
 	</Project>
 </CodeBlocks_project_file>
 `
+	CMAKEStruct = `cmake_minimum_required(VERSION 3.10)
+project(%s VERSION 1.0 LANGUAGES CXX)
+add_executable(%s Source.cpp)`
 )
 
 var helloWorldprog = []string{
