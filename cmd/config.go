@@ -129,6 +129,27 @@ echo "Hello, World!\n";
     println!("Hello, World!");
 }
 `,
+	`#include <stdio.h>
+
+int main() {
+    FILE *file = fopen("example.txt", "r");
+    char ch;
+    while ((ch = fgetc(file)) != EOF) {
+        putchar(ch);
+    }
+    return 0;
+}`,
+	`#include <iostream>
+#include <fstream>
+
+int main() {
+    std::ifstream file("example.txt");
+    char ch;
+    while (file.get(ch)) {
+        std::cout << ch;
+    }
+    return 0;
+}`,
 }
 
 // TEXT MODEL

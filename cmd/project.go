@@ -233,7 +233,7 @@ func initProject(problem_id, lang string) {
 		return
 	}
 
-	newFolder := filepath.Join(cwd, fmt.Sprintf("Problem_%s_Proj", problem_id))
+	newFolder := filepath.Join(cwd, fmt.Sprintf("Problem_%s_Proj_%s", problem_id, lang))
 	err = os.MkdirAll(newFolder, os.ModePerm)
 	if err != nil {
 		fmt.Printf("Could not create project directory! Err: %v\n", err)
@@ -320,6 +320,28 @@ func initProject(problem_id, lang string) {
 		}
 
 		cppFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
+	}
+
+	auxStat := printStatement(problem_id, lang, 2)
+
+	if !strings.Contains(auxStat, ".in") && (lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20") {
+		_ = os.Remove("Source.cpp")
+		cppFile, err := os.Create("Source.cpp")
+		if err != nil {
+			fmt.Println("Error creating .cpp file:", err)
+			return
+		}
+		defer cppFile.Close()
+		cppFile.WriteString(helloWorldprog[10])
+	} else if !strings.Contains(auxStat, ".in") && lang == "c" {
+		_ = os.Remove("Source.c")
+		cppFile, err := os.Create("Source.c")
+		if err != nil {
+			fmt.Println("Error creating .c file:", err)
+			return
+		}
+		defer cppFile.Close()
+		cppFile.WriteString(helloWorldprog[9])
 	}
 
 	if cbp {

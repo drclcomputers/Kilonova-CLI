@@ -226,6 +226,6 @@ func searchProblems(problem_name string) {
 			return
 		}
 
-		printStatement(chosenPb, choice)
+		printStatement(chosenPb, choice, 1)
 	}
 }

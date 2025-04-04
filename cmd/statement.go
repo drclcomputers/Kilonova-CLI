@@ -24,7 +24,7 @@ var printStatementCmd = &cobra.Command{
 	Short: "Print problem statement in chosen language",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		printStatement(args[0], args[1])
+		printStatement(args[0], args[1], 1)
 	},
 }
 
@@ -112,7 +112,7 @@ func problemInfo(id string) string {
 
 }
 
-func printStatement(id, language string) {
+func printStatement(id, language string, use_case int) string {
 	var url string
 
 	//statement
@@ -120,7 +120,7 @@ func printStatement(id, language string) {
 	renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"))
 	if err != nil {
 		logErr(err)
-		return
+		return "error"
 	}
 
 	if language == "RO" {
@@ -131,7 +131,7 @@ func printStatement(id, language string) {
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
-		return
+		return "error"
 	}
 
 	if strings.Contains(string(body), `"status":"error"`) {
@@ -141,23 +141,29 @@ func printStatement(id, language string) {
 	var data statement
 	if err := json.Unmarshal(body, &data); err != nil {
 		logErr(err)
-		return
+		return "error"
 	}
 	text, err := b64.StdEncoding.DecodeString(data.Data.Data)
 	if err != nil {
 		logErr(err)
-		return
+		return "error"
 	}
 	decodedtext := formatText(string(text))
+
+	if use_case == 2 {
+		return decodedtext
+	}
 
 	rendered, err := renderer.Render(problemInfo(id) + "\n# STATEMENT\n\n" + decodedtext)
 	if err != nil {
 		logErr(err)
-		return
+		return "error"
 	}
 
 	p := tea.NewProgram(newTextModel(rendered))
 	if _, err := p.Run(); err != nil {
 		fmt.Println("Error:", err)
 	}
+
+	return ""
 }
