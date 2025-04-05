@@ -50,8 +50,8 @@ func init() {
 	rootCmd.AddCommand(initProjectCmd)
 	rootCmd.AddCommand(getRandPbCmd)
 
-	initProjectCmd.Flags().BoolVarP(&cbp, "cbp_project", "b", true, "Create a codeblocks project.")
-	initProjectCmd.Flags().BoolVarP(&cmake, "cmake_project", "c", true, "Create cmake project.")
+	initProjectCmd.Flags().BoolVarP(&cbp, "cbp_project", "b", false, "Create a codeblocks project.")
+	initProjectCmd.Flags().BoolVarP(&cmake, "cmake_project", "c", false, "Create a cmake project.")
 }
 
 func CopyFile(src, dest string) error {
@@ -142,7 +142,6 @@ func createCBPProject(name string) {
 	File, err := os.Create(fmt.Sprintf("%s.cbp", name))
 	if err != nil {
 		logErr(fmt.Errorf("error creating .cbp file: %v", err))
-		return
 	}
 	defer File.Close()
 
@@ -229,7 +228,6 @@ func initProject(problem_id, lang string) {
 	cwd, err := os.Getwd()
 	if err != nil {
 		logErr(fmt.Errorf("could not get current working directory! error: %v", err))
-		return
 	}
 
 	newFolder := filepath.Join(cwd, fmt.Sprintf("Problem_%s_Proj_%s", problem_id, lang))
@@ -251,10 +249,9 @@ func initProject(problem_id, lang string) {
 	ok := false
 
 	supportedLangs := checklangs(problem_id, 2)
-	for i := 0; i < len(supportedLangs); i++ {
+	for i := range supportedLangs {
 		if lang == supportedLangs[i] {
 			ok = true
-
 			createSource(cwd, lang)
 		}
 	}
@@ -293,6 +290,8 @@ func initProject(problem_id, lang string) {
 
 		hFileContent, err := os.ReadFile(headerFilename)
 		if err != nil {
+			os.Chdir("..")
+			os.Remove(newFolder)
 			logErr(fmt.Errorf("error reading header file: %v", err))
 		}
 
@@ -300,8 +299,9 @@ func initProject(problem_id, lang string) {
 
 		cppFile, err := os.Create("Source.cpp")
 		if err != nil {
+			os.Chdir("..")
+			os.Remove(newFolder)
 			logErr(fmt.Errorf("error creating .cpp file: %v", err))
-			return
 		}
 		defer cppFile.Close()
 
@@ -314,36 +314,42 @@ func initProject(problem_id, lang string) {
 		}
 
 		cppFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
-	}
-
-	auxStat := printStatement(problem_id, "RO", 2)
-	if auxStat == "nolang" {
-		auxStat = printStatement(problem_id, "EN", 2)
-	}
-
-	if !strings.Contains(auxStat, "stdin") && (lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20") {
-		_ = os.Remove("Source.cpp")
-		cppFile, err := os.Create("Source.cpp")
-		if err != nil {
-			logErr(fmt.Errorf("error creating .cpp file: %v", err))
+	} else {
+		auxStat := printStatement(problem_id, "RO", 2)
+		if auxStat == "nolang" {
+			auxStat = printStatement(problem_id, "EN", 2)
 		}
-		defer cppFile.Close()
-		cppFile.WriteString(helloWorldprog[10])
-	} else if !strings.Contains(auxStat, "stdin") && lang == "c" {
-		_ = os.Remove("Source.c")
-		cppFile, err := os.Create("Source.c")
-		if err != nil {
-			logErr(fmt.Errorf("error creating .c file: %v", err))
+
+		if !strings.Contains(auxStat, "stdin") && (lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20") {
+			_ = os.Remove("Source.cpp")
+			cppFile, err := os.Create("Source.cpp")
+			if err != nil {
+				os.Chdir("..")
+				os.Remove(newFolder)
+				logErr(fmt.Errorf("error creating .cpp file: %v", err))
+			}
+			defer cppFile.Close()
+			cppFile.WriteString(helloWorldprog[10])
+		} else if !strings.Contains(auxStat, "stdin") && lang == "c" {
+			_ = os.Remove("Source.c")
+			cppFile, err := os.Create("Source.c")
+			if err != nil {
+				os.Chdir("..")
+				os.Remove(newFolder)
+				logErr(fmt.Errorf("error creating .c file: %v", err))
+			}
+			defer cppFile.Close()
+			cppFile.WriteString(helloWorldprog[9])
 		}
-		defer cppFile.Close()
-		cppFile.WriteString(helloWorldprog[9])
 	}
 
 	if cbp {
+		fmt.Println(cbp)
 		createCBPProject(problem_id)
 	}
 
 	if cmake {
+		fmt.Println(cmake)
 		createCMAKEProject(problem_id)
 	}
 
