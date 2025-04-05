@@ -32,7 +32,7 @@ var initProjectCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { initProject(args[0], args[1]) }
 		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			logErr(err)
+			logError(err)
 		}
 	},
 }
@@ -42,7 +42,7 @@ var getRandPbCmd = &cobra.Command{
 	Short: "Get random problem to solve.",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		getRandPb()
+		getRandProblem()
 	},
 }
 
@@ -136,24 +136,24 @@ func Unzip(src string, dest string) error {
 	return nil
 }
 
-func createCBPProject(name string) {
+func createCodeBlocksProject(name string) {
 	xmlCBP := fmt.Sprintf(XMLCBPStruct, name, name, name)
 
 	File, err := os.Create(fmt.Sprintf("%s.cbp", name))
 	if err != nil {
-		logErr(fmt.Errorf("error creating .cbp file: %v", err))
+		logError(fmt.Errorf("error creating .cbp file: %v", err))
 	}
 	defer File.Close()
 
 	File.WriteString(xmlCBP)
 }
 
-func createCMAKEProject(name string) {
+func createCMakeProjectFile(name string) {
 	cmakeTXT := fmt.Sprintf(CMAKEStruct, name, name)
 
 	File, err := os.Create("CMakeLists.txt")
 	if err != nil {
-		logErr(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
+		logError(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
 		return
 	}
 	defer File.Close()
@@ -197,14 +197,15 @@ func createSource(cwd, lang string) {
 
 func getName(problem_id string) string {
 	url := fmt.Sprintf(URL_PROBLEM, problem_id)
-	body, err := makeRequest("GET", url, nil, "0")
+	body, err := MakeGetRequest(url, nil, RequestNone)
+
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
-	var info info
+	var info ProblemInfo
 	if err := json.Unmarshal(body, &info); err != nil {
-		logErr(err)
+		logError(err)
 	}
 	return info.Data.Name
 }
@@ -227,47 +228,42 @@ func extractFunctionDeclarations(hFileContent string) []string {
 func initProject(problem_id, lang string) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		logErr(fmt.Errorf("could not get current working directory! error: %v", err))
+		logError(fmt.Errorf("could not get current working directory! error: %v", err))
+		return
 	}
 
 	newFolder := filepath.Join(cwd, fmt.Sprintf("Problem_%s_Proj_%s", problem_id, lang))
-	err = os.MkdirAll(newFolder, os.ModePerm)
-	if err != nil {
-		logErr(fmt.Errorf("could not create project directory! error: %v", err))
+	if err := os.MkdirAll(newFolder, os.ModePerm); err != nil {
+		logError(fmt.Errorf("could not create project directory! error: %v", err))
+		return
 	}
 
-	err = os.Chdir(newFolder)
-	if err != nil {
-		logErr(fmt.Errorf("could not change directory to project dir! error: %v", err))
+	if err := os.Chdir(newFolder); err != nil {
+		logError(fmt.Errorf("could not change directory to project dir! error: %v", err))
+		return
 	}
 
 	cwd, err = os.Getwd()
 	if err != nil {
-		logErr(fmt.Errorf("could not get current working directory! error: %v", err))
+		logError(fmt.Errorf("could not get current working directory! error: %v", err))
+		return
 	}
 
-	ok := false
-
-	supportedLangs := checkLanguages(problem_id, 2)
-	for i := range supportedLangs {
-		if lang == supportedLangs[i] {
-			ok = true
-			createSource(cwd, lang)
-		}
-	}
-
-	if !ok {
+	if !isLanguageSupported(problem_id, lang) {
 		os.Chdir("..")
 		os.Remove(newFolder)
-		logErr(errors.New("problem is not available in the selected language"))
+		logError(errors.New("problem is not available in the selected language"))
+		return
 	}
 
 	getAssets(problem_id)
 
 	archiveFilename := fmt.Sprintf("%s.zip", problem_id)
 	unzipedDir := problem_id
-
-	Unzip(archiveFilename, unzipedDir)
+	if err := Unzip(archiveFilename, unzipedDir); err != nil {
+		logError(fmt.Errorf("error unzipping file: %v", err))
+		return
+	}
 
 	_ = os.Remove(archiveFilename)
 
@@ -275,12 +271,14 @@ func initProject(problem_id, lang string) {
 
 	if strings.Contains(getName(problem_id), "interactiv") {
 		_ = os.Remove("Source.cpp")
+
 		files, err := os.ReadDir(cwd)
 		if err != nil {
-			logErr(err)
+			logError(err)
+			return
 		}
-		var headerFilename string
 
+		var headerFilename string
 		for _, file := range files {
 			if !file.IsDir() && filepath.Ext(file.Name()) == ".h" {
 				headerFilename = file.Name()
@@ -292,7 +290,8 @@ func initProject(problem_id, lang string) {
 		if err != nil {
 			os.Chdir("..")
 			os.Remove(newFolder)
-			logErr(fmt.Errorf("error reading header file: %v", err))
+			logError(fmt.Errorf("error reading header file: %v", err))
+			return
 		}
 
 		funcDecls := extractFunctionDeclarations(string(hFileContent))
@@ -301,12 +300,12 @@ func initProject(problem_id, lang string) {
 		if err != nil {
 			os.Chdir("..")
 			os.Remove(newFolder)
-			logErr(fmt.Errorf("error creating .cpp file: %v", err))
+			logError(fmt.Errorf("error creating .cpp file: %v", err))
+			return
 		}
 		defer cppFile.Close()
 
 		cppFile.WriteString("#include<iostream>\n#include \"myfunc.h\"\n\n")
-
 		for _, decl := range funcDecls {
 			cppFile.WriteString(decl + " {\n")
 			cppFile.WriteString("\n")
@@ -315,28 +314,34 @@ func initProject(problem_id, lang string) {
 
 		cppFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
 	} else {
-		auxStat := printStatement(problem_id, "RO", 2)
-		if auxStat == "nolang" {
-			auxStat = printStatement(problem_id, "EN", 2)
+		problemStatement, err := printStatement(problem_id, "RO", 2)
+		if err != nil && err.Error() == "nolang" {
+			problemStatement, err = printStatement(problem_id, "EN", 2)
+			if err != nil {
+				logError(fmt.Errorf("error fetching problem statement: %v", err))
+				return
+			}
 		}
 
-		if !strings.Contains(auxStat, "stdin") && (lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20") {
+		if !strings.Contains(problemStatement, "stdin") && isCppLang(lang) {
 			_ = os.Remove("Source.cpp")
 			cppFile, err := os.Create("Source.cpp")
 			if err != nil {
 				os.Chdir("..")
 				os.Remove(newFolder)
-				logErr(fmt.Errorf("error creating .cpp file: %v", err))
+				logError(fmt.Errorf("error creating .cpp file: %v", err))
+				return
 			}
 			defer cppFile.Close()
 			cppFile.WriteString(helloWorldprog[10])
-		} else if !strings.Contains(auxStat, "stdin") && lang == "c" {
+		} else if !strings.Contains(problemStatement, "stdin") && lang == "c" {
 			_ = os.Remove("Source.c")
 			cppFile, err := os.Create("Source.c")
 			if err != nil {
 				os.Chdir("..")
 				os.Remove(newFolder)
-				logErr(fmt.Errorf("error creating .c file: %v", err))
+				logError(fmt.Errorf("error creating .c file: %v", err))
+				return
 			}
 			defer cppFile.Close()
 			cppFile.WriteString(helloWorldprog[9])
@@ -344,16 +349,36 @@ func initProject(problem_id, lang string) {
 	}
 
 	if cbp {
-		createCBPProject(problem_id)
+		createCodeBlocksProject(problem_id)
 	}
 
 	if cmake {
-		createCMAKEProject(problem_id)
+		createCMakeProjectFile(problem_id)
 	}
-
 }
 
-func nrPbs() int {
+func isLanguageSupported(problem_id, lang string) bool {
+	cwd, err := os.Getwd()
+	if err != nil {
+		logError(fmt.Errorf("could not get current working directory: %v", err))
+		return false
+	}
+
+	supportedLangs := checkLanguages(problem_id, 2)
+	for _, supportedLang := range supportedLangs {
+		if lang == supportedLang {
+			createSource(cwd, lang)
+			return true
+		}
+	}
+	return false
+}
+
+func isCppLang(lang string) bool {
+	return lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20"
+}
+
+func problemCount() int {
 	searchData := map[string]interface{}{
 		"name_fuzzy": "",
 		"offset":     0,
@@ -361,18 +386,18 @@ func nrPbs() int {
 
 	jsonData, err := json.Marshal(searchData)
 	if err != nil {
-		logErr(fmt.Errorf("error marshaling JSON: %v", err))
+		logError(fmt.Errorf("error marshaling JSON: %v", err))
 	}
 
-	body, err := makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
+	body, err := MakePostRequest(URL_SEARCH, bytes.NewBuffer(jsonData), RequestJSON)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
-	var data search
+	var data Search
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		logErr(fmt.Errorf("error unmarshaling JSON: %v", err))
+		logError(fmt.Errorf("error unmarshaling JSON: %v", err))
 		os.Exit(1)
 	}
 
@@ -380,8 +405,7 @@ func nrPbs() int {
 
 }
 
-func getRandPb() {
-	//min := 1
-	max := nrPbs()
+func getRandProblem() {
+	max := problemCount()
 	fmt.Printf("Your random problem's ID: #%d\n", rand.IntN(max)+1)
 }

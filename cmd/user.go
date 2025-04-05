@@ -14,6 +14,7 @@ import (
 	u "net/url"
 	"os"
 	"path/filepath"
+	"text/template"
 	"time"
 
 	"github.com/PuerkitoBio/goquery"
@@ -24,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-type userDetailResp struct {
+type UserDetailResponse struct {
 	Data struct {
 		Id          int    `json:"id"`
 		Name        string `json:"name"`
@@ -34,12 +35,12 @@ type userDetailResp struct {
 	} `json:"data"`
 }
 
-type userSolvedProblems struct {
+type UserSolvedProblems struct {
 	Data []struct {
-		Problem_ID int     `json:"id"`
-		Name       string  `json:"name"`
-		Source     string  `json:"source_credits"`
-		Score      float64 `json:"score_scale"`
+		ProblemId int     `json:"id"`
+		Name      string  `json:"name"`
+		Source    string  `json:"source_credits"`
+		Score     float64 `json:"score_scale"`
 	} `json:"data"`
 }
 
@@ -50,10 +51,10 @@ var signinCmd = &cobra.Command{
 	Short: "Sign in to your account",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		username, password := LoginForm()
+		username, password := loginForm()
 		action := func() { login(username, password) }
 		if err := spinner.New().Title("Logging in...").Action(action).Run(); err != nil {
-			logErr(err)
+			logError(err)
 		}
 	},
 }
@@ -64,7 +65,7 @@ var logoutCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { logout() }
 		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			logErr(err)
+			logError(err)
 		}
 	},
 }
@@ -164,7 +165,7 @@ var amILoggedInCmd = &cobra.Command{
 	Short: "Check wether you're logged in or not.",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		fmt.Println(amILoggedIn())
+		fmt.Println(isCurrentUserLoggedIn())
 	},
 }
 
@@ -195,7 +196,7 @@ func init() {
 }
 
 // login
-func LoginForm() (string, string) {
+func loginForm() (string, string) {
 	var username, password string
 	form := huh.NewForm(
 		huh.NewGroup(
@@ -210,71 +211,69 @@ func LoginForm() (string, string) {
 	)
 
 	if err := form.Run(); err != nil {
-		logErr(err)
+		logError(err)
 	}
 
 	return username, password
 }
 
 func login(username, password string) {
-
 	formData := u.Values{
 		"username": {username},
 		"password": {password},
 	}
 
-	body, err := makeRequest("POST", URL_LOGIN, bytes.NewBufferString(formData.Encode()), "3")
+	body, err := MakePostRequest(URL_LOGIN, bytes.NewBufferString(formData.Encode()), RequestFormGuest)
 	if err != nil {
-		logErr(fmt.Errorf("login failed: %v", err))
+		logError(fmt.Errorf("login failed: %v", err))
 	}
 
 	if !bytes.Contains(body, []byte("success")) {
-		logErr(fmt.Errorf("login failed: invalid credentials"))
+		logError(fmt.Errorf("login failed: invalid credentials"))
 	}
 
-	var response KNResponse
+	var response KilonovaResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		logErr(fmt.Errorf("error parsing response: %v", err))
+		logError(fmt.Errorf("error parsing response: %v", err))
 	}
 
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 	configDir := filepath.Join(homedir, ".config", "kn-cli")
 	err = os.MkdirAll(configDir, os.ModePerm)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 	tokenFile := filepath.Join(configDir, "token")
 
 	file, err := os.Create(tokenFile)
 	if err != nil {
-		logErr(fmt.Errorf("error creating file: %v", err))
+		logError(fmt.Errorf("error creating file: %v", err))
 	}
 	defer file.Close()
 
 	if err := os.WriteFile(tokenFile, []byte(response.Data), 0644); err != nil {
-		logErr(fmt.Errorf("error writing auth token to file: %v", err))
+		logError(fmt.Errorf("error writing auth token to file: %v", err))
 	}
 
 	fmt.Println("Login successful!")
-
 }
 
 // logout
 func logout() {
 	jsonData := []byte(`{"key": "value"}`)
-	body, err := makeRequest("POST", URL_LOGOUT, bytes.NewBuffer(jsonData), "1")
+	body, err := MakePostRequest(URL_LOGOUT, bytes.NewBuffer(jsonData), RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
 	if bytes.Contains(body, []byte("success")) {
 		fmt.Println("Logged out successfully!")
 		homedir, err := os.UserHomeDir()
 		if err != nil {
-			logErr(err)
+			logError(err)
 		}
 		configDir := filepath.Join(homedir, ".config", "kn-cli")
 		tokenFile := filepath.Join(configDir, "token")
@@ -288,13 +287,13 @@ func logout() {
 func getBio(name string) string {
 	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", name))
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 	defer res.Body.Close()
 
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
 	bio := doc.Find("div.segment-panel.reset-list.statement-content.enhance-tables p").First().Text()
@@ -310,64 +309,95 @@ func userGetDetails(user_id, use_case string) bool {
 		url = fmt.Sprintf(URL_USER, user_id)
 	}
 
-	body, err := makeRequest("GET", url, nil, "3")
+	// Fetch user data
+	body, err := MakeGetRequest(url, nil, RequestFormGuest)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("error fetching user details: %w", err))
+		return false
 	}
 
-	var dataUser userDetailResp
-
-	err = json.Unmarshal(body, &dataUser)
-	if err != nil {
-		logErr(err)
+	var dataUser UserDetailResponse
+	if err := json.Unmarshal(body, &dataUser); err != nil {
+		logError(fmt.Errorf("error unmarshalling user data: %w", err))
+		return false
 	}
 
+	// Set a default value for DisplayName if empty
 	if dataUser.Data.DisplayName == "" {
 		dataUser.Data.DisplayName = "-"
 	}
 
-	if use_case == "isadmin" {
+	// Handle use_case
+	switch use_case {
+	case "isadmin":
 		return dataUser.Data.Admin
-	} else {
+	default:
+		// Generate user details output using a template
+		userTemplate := `ID: {{.Id}}
+Name: {{.Name}}
+A.K.A: {{.DisplayName}}
+Bio: {{.Bio}}
+Admin: {{.Admin}}
+Proposer: {{.Proposer}}
+`
+
+		// Prepare user bio
 		bio := getBio(dataUser.Data.Name)
-		fmt.Printf("ID: %d\nName: %s\nA.K.A: %s\nBio: %s\nAdmin: %t\nProposer: %t\n\n",
-			dataUser.Data.Id, dataUser.Data.Name, dataUser.Data.DisplayName, bio,
-			dataUser.Data.Admin, dataUser.Data.Proposer)
+
+		// Create a map for template data
+		userData := struct {
+			Id          int
+			Name        string
+			DisplayName string
+			Bio         string
+			Admin       bool
+			Proposer    bool
+		}{
+			Id:          dataUser.Data.Id,
+			Name:        dataUser.Data.Name,
+			DisplayName: dataUser.Data.DisplayName,
+			Bio:         bio,
+			Admin:       dataUser.Data.Admin,
+			Proposer:    dataUser.Data.Proposer,
+		}
+
+		// Parse and execute the template
+		tmpl, err := template.New("userDetails").Parse(userTemplate)
+		if err != nil {
+			logError(fmt.Errorf("error parsing template: %w", err))
+			return false
+		}
+
+		if err := tmpl.Execute(os.Stdout, userData); err != nil {
+			logError(fmt.Errorf("error executing template: %w", err))
+			return false
+		}
+
 		return false
 	}
 }
 
-func userGetSolvedProblems(user_id string) {
+func userGetSolvedProblems(userId string) {
 	var url string
-	if user_id == "me" {
+	if userId == "me" {
 		url = URL_SELF_PROBLEMS
 	} else {
-		url = fmt.Sprintf(URL_USER_PROBLEMS, user_id)
+		url = fmt.Sprintf(URL_USER_PROBLEMS, userId)
 	}
 
-	body, err := makeRequest("GET", url, nil, "3")
+	body, err := MakeGetRequest(url, nil, RequestFormGuest)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("error fetching solved problems: %w", err))
+		return
 	}
 
-	var dataUser userSolvedProblems
-
-	err = json.Unmarshal(body, &dataUser)
-	if err != nil {
-		logErr(err)
+	var dataUser UserSolvedProblems
+	if err := json.Unmarshal(body, &dataUser); err != nil {
+		logError(fmt.Errorf("error unmarshalling solved problems: %w", err))
+		return
 	}
 
-	var rows []table.Row
-
-	for _, problem := range dataUser.Data {
-
-		rows = append(rows, table.Row{
-			fmt.Sprintf("%d", problem.Problem_ID),
-			problem.Name,
-			problem.Source,
-			fmt.Sprintf("%.0f", problem.Score),
-		})
-	}
+	rows := prepareTableRows(dataUser)
 
 	columns := []table.Column{
 		{Title: "Problem ID", Width: 7},
@@ -385,33 +415,45 @@ func userGetSolvedProblems(user_id string) {
 
 	t.SetStyles(table.DefaultStyles())
 
-	p := tea.NewProgram(model{table: t}, tea.WithAltScreen())
+	p := tea.NewProgram(&Model{table: t}, tea.WithAltScreen())
 	if t, err := p.Run(); err != nil {
-		logErr(fmt.Errorf("error running program: %s %v", t, err))
+		logError(fmt.Errorf("error running program: %v %v", t, err))
 	}
 }
 
-func amILoggedIn() bool {
+func prepareTableRows(dataUser UserSolvedProblems) []table.Row {
+	var rows []table.Row
+	for _, problem := range dataUser.Data {
+		rows = append(rows, table.Row{
+			fmt.Sprintf("%d", problem.ProblemId),
+			problem.Name,
+			problem.Source,
+			fmt.Sprintf("%.0f", problem.Score),
+		})
+	}
+	return rows
+}
+
+func isCurrentUserLoggedIn() bool {
 	_, hasToken := readToken()
 	return hasToken
 }
 
-// extend session
 func extendSession() {
-	body, err := makeRequest("POST", URL_EXTEND_SESSION, nil, "1")
+	body, err := MakePostRequest(URL_EXTEND_SESSION, nil, RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
-	var resp KNResponse
+	var resp KilonovaResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		logErr(fmt.Errorf("error unmarshalling response: %s", err))
+		logError(fmt.Errorf("error unmarshalling response: %s", err))
 	}
 
 	if resp.Status == "success" {
 		parsedTime, err := time.Parse(time.RFC3339Nano, resp.Data)
 		if err != nil {
-			logErr(err)
+			logError(err)
 		}
 		formattedTime := parsedTime.Format("2006-01-02 15:04:05")
 		fmt.Println("Your session has been extended until ", formattedTime)
@@ -421,32 +463,18 @@ func extendSession() {
 
 }
 
-// return wether an account is admin
-func isAdmin(user_id string) bool {
-	return userGetDetails(user_id, "isadmin")
+func isAdmin(userId string) bool {
+	return userGetDetails(userId, "isadmin")
 }
 
-// Settings User
 func setBio(bio string) {
-	data := map[string]string{"bio": bio}
-
-	jsonData, err := json.Marshal(data)
+	payload := map[string]string{"bio": bio}
+	resp, err := PostJSON[KilonovaResponse](URL_SELF_SET_BIO, payload)
 	if err != nil {
-		logErr(fmt.Errorf("error encoding JSON: %v", err))
+		logError(err)
 	}
 
-	body, err := makeRequest("POST", URL_SELF_SET_BIO, bytes.NewBuffer(jsonData), "2")
-	if err != nil {
-		logErr(err)
-	}
-
-	var dataKN KNResponse
-	err = json.Unmarshal(body, &dataKN)
-	if err != nil {
-		logErr(err)
-	}
-
-	if dataKN.Status == "success" {
+	if resp.Status == "success" {
 		fmt.Println("Success! Bio changed!")
 	} else {
 		fmt.Println("Error: Failed to change bio!")
@@ -454,126 +482,99 @@ func setBio(bio string) {
 }
 
 func changeName(newName, password string) {
-	data := map[string]string{"newName": newName, "password": password}
-
-	jsonData, err := json.Marshal(data)
+	payload := map[string]string{
+		"newName":  newName,
+		"password": password,
+	}
+	resp, err := PostJSON[KilonovaResponse](URL_CHANGE_NAME, payload)
 	if err != nil {
-		logErr(fmt.Errorf("error encoding JSON: %v", err))
+		logError(err)
 	}
 
-	body, err := makeRequest("POST", URL_CHANGE_NAME, bytes.NewBuffer(jsonData), "2")
-	if err != nil {
-		logErr(err)
-	}
-
-	var dataKN KNResponse
-	err = json.Unmarshal(body, &dataKN)
-	if err != nil {
-		logErr(err)
-	}
-
-	if dataKN.Status == "success" {
+	if resp.Status == "success" {
 		fmt.Println("Success! Name changed!")
 	} else {
-		logErr(fmt.Errorf("error: Failed to change name"))
+		logError(fmt.Errorf("failed to change name"))
 	}
 }
 
-func changePass(oldpass, newpass string) {
-	data := map[string]string{"old_password": oldpass, "password": newpass}
-
-	jsonData, err := json.Marshal(data)
+func changePass(oldPass, newPass string) {
+	payload := map[string]string{
+		"old_password": oldPass,
+		"password":     newPass,
+	}
+	resp, err := PostJSON[KilonovaResponse](URL_CHANGE_PASS, payload)
 	if err != nil {
-		logErr(fmt.Errorf("error encoding JSON: %v", err))
+		logError(err)
 	}
 
-	body, err := makeRequest("POST", URL_CHANGE_PASS, bytes.NewBuffer(jsonData), "2")
-	if err != nil {
-		logErr(err)
-	}
-
-	var dataKN KNResponse
-	err = json.Unmarshal(body, &dataKN)
-	if err != nil {
-		logErr(err)
-	}
-
-	if dataKN.Status == "success" {
-		fmt.Println("Success! password changed! You'll have to login again with your new credentials!")
+	if resp.Status == "success" {
+		fmt.Println("Success! Password changed! You'll need to login again.")
 		logout()
 	} else {
-		logErr(fmt.Errorf("error: Failed to change password"))
+		logError(fmt.Errorf("failed to change password"))
 	}
 }
 
 func changeEmail(email, password string) {
-
 	formData := u.Values{}
 	formData.Set("email", email)
 	formData.Set("password", password)
 
-	data := []byte(formData.Encode())
-
-	body, err := makeRequest("POST", URL_CHANGE_EMAIL, bytes.NewBuffer(data), "1")
+	body, err := MakePostRequest(URL_CHANGE_EMAIL, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
-	var dataKN KNResponse
-	err = json.Unmarshal(body, &dataKN)
-	if err != nil {
-		logErr(err)
+	var res KilonovaResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		logError(err)
 	}
 
-	if dataKN.Status == "success" {
+	if res.Status == "success" {
 		fmt.Println("Success! Email changed!")
 	} else {
-		logErr(fmt.Errorf("error: Failed to change email"))
+		logError(fmt.Errorf("failed to change email"))
 	}
 }
 
 func resetPass(email string) {
-	_, hasToken := readToken()
-
-	if hasToken {
-		fmt.Println("You have to be logged out to perform this action!")
+	if _, loggedIn := readToken(); loggedIn {
+		fmt.Println("You must be logged out to reset your password.")
 		return
 	}
 
-	formData := u.Values{}
-	formData.Set("email", email)
+	form := u.Values{}
+	form.Set("email", email)
 
-	data := []byte(formData.Encode())
-
-	body, err := makeRequest("POST", URL_CHANGE_PASS, bytes.NewBuffer(data), "1")
+	body, err := MakePostRequest(URL_CHANGE_PASS, bytes.NewBufferString(form.Encode()), RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
-	var dataKN KNResponse
-	err = json.Unmarshal(body, &dataKN)
-	if err != nil {
-		logErr(err)
+	var res KilonovaResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		logError(err)
 	}
 
-	fmt.Println(dataKN.Data)
+	fmt.Println(res.Data)
 }
 
 func resendEmail() {
-	body, err := makeRequest("POST", URL_RESEND_MAIL, nil, "2")
+	body, err := MakePostRequest(URL_RESEND_MAIL, nil, RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		logError(err)
 	}
 
-	var dataKN KNResponse
-	err = json.Unmarshal(body, &dataKN)
-	if err != nil {
-		logErr(err)
+	var res KilonovaResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		logError(err)
 	}
 
-	fmt.Println(dataKN.Data)
+	fmt.Println(res.Data)
 }
 
+/*
 func deleteUser() {
 	fmt.Print("Are you sure to delete your account? (Y/N) ")
 	var resp string
@@ -604,19 +605,19 @@ func deleteUser() {
 		return
 	}
 
-	body, err := makeRequest("POST", URL_DELETE_USER, nil, "1")
+	body, err := MakePostRequest(URL_CHANGE_EMAIL, nil, RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		LogError(err)
 		return
 	}
 
-	var dataKN KNResponse
+	var dataKN KilonovaResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
-		logErr(err)
+		LogError(err)
 		return
 	}
 
 	fmt.Println(dataKN.Data)
-
 }
+*/

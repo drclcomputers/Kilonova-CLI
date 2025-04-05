@@ -15,7 +15,7 @@ var getAssetsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { getAssets(args[0]) }
 		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			logErr(err)
+			logError(err)
 		}
 	},
 }
@@ -39,15 +39,15 @@ func getAssets(id string) {
 	url := fmt.Sprintf(URL_ASSETS, id)
 
 	outputFile := fmt.Sprintf("%s.zip", id)
-	data, err := makeRequest("GET", url, nil, "4")
+	data, err := MakeGetRequest(url, nil, RequestDownloadZip)
 	if err != nil {
-		logErr(fmt.Errorf("error making request: %v", err))
+		logError(fmt.Errorf("error making request: %v", err))
 		return
 	}
 
 	err = saveToFile(outputFile, data)
 	if err != nil {
-		logErr(fmt.Errorf("error saving file: %v", err))
+		logError(fmt.Errorf("error saving file: %v", err))
 		return
 	}
 

@@ -37,21 +37,19 @@ func init() {
 	rootCmd.AddCommand(searchCmd)
 }
 
-// TABLE
-
-var chosenPb string = ""
+var chosenProblem string = ""
 
 var globalRows []table.Row
 
-type modelsearch struct {
+type ModelSearch struct {
 	table table.Model
 }
 
-func (m modelsearch) Init() tea.Cmd {
+func (m ModelSearch) Init() tea.Cmd {
 	return nil
 }
 
-func (m modelsearch) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m ModelSearch) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
 		switch msg.String() {
@@ -69,102 +67,106 @@ func (m modelsearch) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	return m, cmd
 }
 
-func (m modelsearch) handleSelection() (tea.Model, tea.Cmd) {
+func (m ModelSearch) handleSelection() (tea.Model, tea.Cmd) {
 	selectedIndex := m.table.Cursor()
 	selectedProblem := globalRows[selectedIndex]
 
-	chosenPb = string(selectedProblem[0])
+	chosenProblem = string(selectedProblem[0])
 
 	return m, tea.Quit
 }
 
-func (m modelsearch) View() string {
+func (m ModelSearch) View() string {
 	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
 }
 
-// search problems
-type search struct {
+type Search struct {
 	Data struct {
 		Count    int `json:"count"`
 		Problems []struct {
-			Id             int    `json:"id"`
-			Name           string `json:"name"`
-			Source_Credits string `json:"source_credits"`
-			Max_Score      int    `json:"max_score"`
+			Id            int    `json:"id"`
+			Name          string `json:"name"`
+			SourceCredits string `json:"source_credits"`
+			Max_Score     int    `json:"max_score"`
 		}
 	} `json:"data"`
 }
 
-func searchProblems(problem_name string) {
-	if problem_name == "all" {
-		problem_name = ""
+func fetchProblems(problemName string) ([]table.Row, error) {
+	if problemName == "all" {
+		problemName = ""
 	}
 
 	searchData := map[string]interface{}{
-		"name_fuzzy": problem_name,
+		"name_fuzzy": problemName,
 		"offset":     0,
-	}
-
-	jsonData, err := json.Marshal(searchData)
-	if err != nil {
-		logErr(fmt.Errorf("error marshaling JSON: %v", err))
-	}
-
-	body, err := makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
-	if err != nil {
-		logErr(err)
-	}
-
-	var data search
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		logErr(fmt.Errorf("error unmarshaling JSON: %v", err))
-	}
-
-	if data.Data.Count == 0 {
-		fmt.Println("No problems found.")
-		return
-	}
-
-	pages := data.Data.Count / 50
-	if data.Data.Count%50 != 0 {
-		pages++
 	}
 
 	var rows []table.Row
 
-	for offset := 0; offset < data.Data.Count; offset += 50 {
-		searchData["offset"] = offset
+	data, err := searchAPI(searchData)
+	if err != nil {
+		return nil, err
+	}
 
-		jsonData, err := json.Marshal(searchData)
+	pages := (data.Data.Count + 49) / 50
+
+	for page := 0; page < pages; page++ {
+		searchData["offset"] = page * 50
+
+		pageData, err := searchAPI(searchData)
 		if err != nil {
-			logErr(err)
+			return nil, err
 		}
 
-		body, err = makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
-		if err != nil {
-			logErr(err)
-		}
-
-		err = json.Unmarshal(body, &data)
-		if err != nil {
-			logErr(err)
-		}
-
-		for _, problem := range data.Data.Problems {
+		for _, problem := range pageData.Data.Problems {
 			if problem.Max_Score == -1 {
 				problem.Max_Score = 0
 			}
-			if problem.Source_Credits == "" {
-				problem.Source_Credits = "-"
+			if problem.SourceCredits == "" {
+				problem.SourceCredits = "-"
 			}
 			rows = append(rows, table.Row{
 				fmt.Sprintf("%d", problem.Id),
 				problem.Name,
-				problem.Source_Credits,
+				problem.SourceCredits,
 				fmt.Sprintf("%d", problem.Max_Score),
 			})
 		}
+	}
+
+	return rows, nil
+}
+
+func searchAPI(searchData map[string]interface{}) (*Search, error) {
+	jsonData, err := json.Marshal(searchData)
+	if err != nil {
+		return nil, fmt.Errorf("error marshaling JSON: %v", err)
+	}
+
+	body, err := MakePostRequest(URL_SEARCH, bytes.NewBuffer(jsonData), RequestJSON)
+	if err != nil {
+		return nil, err
+	}
+
+	var data Search
+	if err := json.Unmarshal(body, &data); err != nil {
+		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
+	}
+
+	return &data, nil
+}
+
+func searchProblems(problemName string) {
+	rows, err := fetchProblems(problemName)
+	if err != nil {
+		logError(fmt.Errorf("error fetching problems: %v", err))
+		return
+	}
+
+	if len(rows) == 0 {
+		fmt.Println("No problems found.")
+		return
 	}
 
 	globalRows = rows
@@ -185,44 +187,46 @@ func searchProblems(problem_name string) {
 
 	t.SetStyles(table.DefaultStyles())
 
-	p := tea.NewProgram(modelsearch{table: t}, tea.WithAltScreen())
+	p := tea.NewProgram(ModelSearch{table: t}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		logErr(fmt.Errorf("error running program: %v", err))
+		logError(fmt.Errorf("error running program: %v", err))
 	}
 
-	if chosenPb != "" {
-		var choice string = ""
-		fmt.Print("\nDo you wish to see the statement in RO(r) or EN(e): ")
-		//fmt.Scanf("%s", &choice)\
-
-		if err := keyboard.Open(); err != nil {
-			logErr(err)
-		}
-		defer keyboard.Close()
-
-		for choice == "" {
-			key, _, err := keyboard.GetSingleKey()
-			if err != nil {
-				logErr(err)
-			}
-
-			switch {
-			case key == rune(keyboard.KeyEsc):
-				choice = "ESC"
-			case key == rune('r') || key == rune('R'):
-				choice = "RO"
-			case key == rune('e') || key == rune('E'):
-				choice = "EN"
-			default:
-				choice = "ESC"
-			}
-
-		}
-
-		if choice == "ESC" {
-			return
-		}
-
-		printStatement(chosenPb, choice, 1)
+	if chosenProblem != "" {
+		chooseLanguageAndShowStatement()
 	}
+}
+
+func chooseLanguageAndShowStatement() {
+	var choice string
+	fmt.Print("\nDo you wish to see the statement in RO(r) or EN(e): ")
+
+	if err := keyboard.Open(); err != nil {
+		logError(err)
+	}
+	defer keyboard.Close()
+
+	for choice == "" {
+		key, _, err := keyboard.GetSingleKey()
+		if err != nil {
+			logError(err)
+		}
+
+		switch {
+		case key == rune(keyboard.KeyEsc):
+			choice = "ESC"
+		case key == rune('r') || key == rune('R'):
+			choice = "RO"
+		case key == rune('e') || key == rune('E'):
+			choice = "EN"
+		default:
+			choice = "ESC"
+		}
+	}
+
+	if choice == "ESC" {
+		return
+	}
+
+	printStatement(chosenProblem, choice, 1)
 }

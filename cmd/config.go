@@ -8,7 +8,6 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -25,34 +24,34 @@ import (
 )
 
 const (
-	URL_LOGIN                      = "https://kilonova.ro/api/auth/login"
-	URL_LOGOUT                     = "https://kilonova.ro/api/auth/logout"
-	URL_EXTEND_SESSION             = "https://kilonova.ro/api/auth/extendSession"
-	URL_SEARCH                     = "https://kilonova.ro/api/problem/search"
-	URL_PROBLEM                    = "https://kilonova.ro/api/problem/%s/"
-	URL_SELF                       = "https://kilonova.ro/api/user/self/"
-	URL_SELF_PROBLEMS              = "https://kilonova.ro/api/user/self/solvedProblems"
-	URL_SELF_SET_BIO               = "https://kilonova.ro/api/user/self/setBio"
-	URL_CHANGE_EMAIL               = "https://kilonova.ro/api/user/changeEmail"
-	URL_CHANGE_PASS                = "https://kilonova.ro/api/user/changePassword"
-	URL_CHANGE_NAME                = "https://kilonova.ro/api/user/updateName"
-	URL_USER                       = "https://kilonova.ro/api/user/byID/%s"
-	URL_USER_PROBLEMS              = "https://kilonova.ro/api/user/byID/%s/solvedProblems"
-	URL_LANGS_PB                   = "https://kilonova.ro/api/problem/%s/languages"
-	URL_SUBMIT                     = "https://kilonova.ro/api/submissions/submit"
-	URL_LATEST_SUBMISSION          = "https://kilonova.ro/api/submissions/getByID?id=%d"
-	URL_SUBMISSION_LIST            = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
-	URL_SUBMISSION_LIST_NO_FILTER  = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
-	URL_SUBMISSION_LIST_NO_PROBLEM = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
-	URL_SUBMISSION_LIST_NO_USER    = "https://kilonova.ro/api/submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s"
+	API_URL                        = "https://kilonova.ro/api/"
+	URL_LOGIN                      = API_URL + "auth/login"
+	URL_LOGOUT                     = API_URL + "auth/logout"
+	URL_EXTEND_SESSION             = API_URL + "auth/extendSession"
+	URL_SEARCH                     = API_URL + "problem/search"
+	URL_PROBLEM                    = API_URL + "problem/%s/"
+	URL_SELF                       = API_URL + "user/self/"
+	URL_SELF_PROBLEMS              = API_URL + "user/self/solvedProblems"
+	URL_SELF_SET_BIO               = API_URL + "user/self/setBio"
+	URL_CHANGE_EMAIL               = API_URL + "user/changeEmail"
+	URL_CHANGE_PASS                = API_URL + "user/changePassword"
+	URL_CHANGE_NAME                = API_URL + "user/updateName"
+	URL_USER                       = API_URL + "user/byID/%s"
+	URL_USER_PROBLEMS              = API_URL + "user/byID/%s/solvedProblems"
+	URL_LANGS_PB                   = API_URL + "problem/%s/languages"
+	URL_SUBMIT                     = API_URL + "submissions/submit"
+	URL_LATEST_SUBMISSION          = API_URL + "submissions/getByID?id=%d"
+	URL_SUBMISSION_LIST            = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
+	URL_SUBMISSION_LIST_NO_FILTER  = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
+	URL_SUBMISSION_LIST_NO_PROBLEM = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
+	URL_SUBMISSION_LIST_NO_USER    = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s"
 	STAT_FILENAME_RO               = "statement-ro.md"
 	STAT_FILENAME_EN               = "statement-en.md"
-	URL_STATEMENT                  = "https://kilonova.ro/api/problem/%s/get/attachmentByName/%s"
+	URL_STATEMENT                  = API_URL + "problem/%s/get/attachmentByName/%s"
 	URL_ASSETS                     = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
-	URL_RESEND_MAIL                = "https://kilonova.ro/api/user/resendEmail"
-	URL_DELETE_USER                = "https://kilonova.ro/api/user/moderation/deleteUser"
+	URL_RESEND_MAIL                = API_URL + "user/resendEmail"
+	URL_DELETE_USER                = API_URL + "user/moderation/deleteUser"
 	userAgent                      = "KilonovaCLIClient/0.1"
-	help                           = "Kilonova CLI - ver 0.1.5\n\n-signin <USERNAME> <PASSWORD>\n-langs <ID>\n-search <PROBLEM ID or NAME>\n-submit <PROBLEM ID> <LANGUAGE> <solution>\n-submissions <ID>\n-statement <PROBLEM ID> <RO or EN>\n-logout"
 	XMLCBPStruct                   = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
@@ -153,20 +152,32 @@ int main() {
 }`,
 }
 
+type RequestType int
+
+const (
+	RequestNone          RequestType = iota
+	RequestFormAuth                  // 1
+	RequestJSON                      // 2
+	RequestFormGuest                 // 3
+	RequestDownloadZip               // 4
+	RequestMultipartForm             // 5
+)
+
 // TEXT MODEL
 
-type textModel struct {
+type TextModel struct {
 	viewport viewport.Model
 }
 
-func (m textModel) Init() tea.Cmd {
+func (m *TextModel) Init() tea.Cmd {
 	return nil
 }
 
-func (m textModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *TextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
+		switch key := msg.String(); key {
 		case "q", "esc":
 			return m, tea.Quit
 		case "up", "k":
@@ -175,146 +186,136 @@ func (m textModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			m.viewport.LineDown(1)
 		}
 	}
-	return m, nil
+	return m, cmd
 }
 
-func (m textModel) View() string {
+func (m *TextModel) View() string {
 	style := lipgloss.NewStyle().Border(lipgloss.NormalBorder()).Padding(1)
-	return style.Render(m.viewport.View()) + "\n(Use ↑/↓ to scroll, 'q' to quit)"
+	footer := "\n(Use ↑/↓ to scroll, 'q' to quit)"
+	return style.Render(m.viewport.View()) + footer
 }
 
-func newTextModel(text string) textModel {
+func NewTextModel(text string) *TextModel {
 	vp := viewport.New(80, 25)
 	vp.SetContent(text)
-	return textModel{viewport: vp}
+	return &TextModel{viewport: vp}
 }
 
-// TABLE MODEL
-
-type model struct {
+type Model struct {
 	table table.Model
 }
 
-func (m model) Init() tea.Cmd {
+func (m *Model) Init() tea.Cmd {
 	return nil
 }
 
-func (m model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	var cmd tea.Cmd
 	switch msg := msg.(type) {
 	case tea.KeyMsg:
-		switch msg.String() {
-		case "q":
-			return m, tea.Quit
-		case "esc":
+		switch key := msg.String(); key {
+		case "q", "esc":
 			return m, tea.Quit
 		}
 	}
 
-	var cmd tea.Cmd
 	m.table, cmd = m.table.Update(msg)
 	return m, cmd
 }
 
-func (m model) View() string {
-	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
+func (m *Model) View() string {
+	footer := "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
+	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + footer
 }
 
-// Other functions
-
-type userid struct {
+type UserId struct {
 	Data struct {
 		ID int `json:"id"`
 	} `json:"data"`
 }
 
-type KNResponseRaw struct {
+type RawKilonovaResponse struct {
 	Status string          `json:"status"`
 	Data   json.RawMessage `json:"data"`
 }
 
-type KNResponse struct {
+type KilonovaResponse struct {
 	Status string `json:"status"`
 	Data   string `json:"data"`
 }
 
 func getUserID() string {
-	//get user id
-
-	jsonData := []byte(`{"key": "value"}`)
-	body, err := makeRequest("GET", URL_SELF, bytes.NewBuffer(jsonData), "1")
+	body, err := MakeGetRequest(URL_SELF, nil, RequestFormAuth)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("failed to retrieve user info: %w", err))
 		return ""
 	}
 
-	var data userid
-	if err := json.Unmarshal(body, &data); err != nil {
-		logErr(err)
+	var user UserId
+	if err := json.Unmarshal(body, &user); err != nil {
+		logError(fmt.Errorf("failed to parse user ID from response: %w", err))
 		return ""
 	}
 
-	return strconv.Itoa(data.Data.ID)
+	return strconv.Itoa(user.Data.ID)
 }
 
 func readToken() (string, bool) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
-		logErr(err)
-	}
-	configDir := filepath.Join(homedir, ".config", "kn-cli")
-	tokenFile := filepath.Join(configDir, "token")
-
-	token, err := os.ReadFile(tokenFile)
-	if err != nil {
+		logError(fmt.Errorf("failed to get user home directory: %w", err))
 		return "", false
 	}
-	return string(bytes.TrimSpace(token)), true
+
+	tokenPath := filepath.Join(homedir, ".config", "kn-cli", "token")
+	data, err := os.ReadFile(tokenPath)
+	if err != nil {
+		logError(fmt.Errorf("failed to read token file: %w", err))
+		return "", false
+	}
+
+	return string(bytes.TrimSpace(data)), true
 }
 
-func logErr(err error) {
-	red := "\033[31m"
-	reset := "\033[0m"
-	log.Fatal(red + err.Error() + reset)
+func logError(err error) {
+	log.Fatalf("\033[31m%v\033[0m\n", err)
 }
 
-func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, error) {
+func MakeRequest(method, url string, body io.Reader, reqType RequestType, contentType ...string) ([]byte, error) {
 	req, err := http.NewRequest(method, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("error creating request: %w", err)
 	}
 
+	req.Header.Set("User-Agent", userAgent)
 	token, hasToken := readToken()
 
-	req.Header.Set("User-Agent", userAgent)
-	switch {
-	case use_case == "1" || use_case == "3": //form: 1 - logged, 3 - guest
+	switch reqType {
+	case RequestFormAuth, RequestFormGuest:
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
-	case use_case == "2": //json
+	case RequestJSON:
 		req.Header.Set("Content-Type", "application/json")
-	case use_case == "4": //download zip
+	case RequestDownloadZip:
 		req.Header.Set("Content-Type", "application/zip")
-		fmt.Println("Trying to obtain archive...")
-	default:
-		if use_case != "0" { //other use cases
-			req.Header.Set("Content-Type", use_case)
-		}
-	}
-
-	if hasToken {
-		req.Header.Set("Authorization", token)
-	} else {
-		if use_case == "1" || use_case == "4" {
-			logErr(fmt.Errorf("you must be authenticated to do this"))
-		}
-	}
-
-	if use_case == "4" {
 		req.Header.Set("Accept", "application/zip")
+		fmt.Println("Trying to obtain archive...")
 		cookie := &http.Cookie{
 			Name:  "kn-sessionid",
 			Value: token,
 		}
 		req.AddCookie(cookie)
+	case RequestMultipartForm:
+		if len(contentType) > 0 {
+			req.Header.Set("Content-Type", contentType[0])
+		} else {
+			logError(fmt.Errorf("missing content type for multipart form request"))
+		}
+	}
+
+	if hasToken {
+		req.Header.Set("Authorization", token)
+	} else if reqType == RequestFormAuth || reqType == RequestDownloadZip {
+		logError(fmt.Errorf("you must be authenticated to do this"))
 	}
 
 	resp, err := http.DefaultClient.Do(req)
@@ -329,12 +330,41 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		var respKN KNResponseRaw
-		if err := json.Unmarshal(data, &respKN); err != nil {
-			logErr(err)
+		var res RawKilonovaResponse
+		if err := json.Unmarshal(data, &res); err != nil {
+			logError(err)
 		}
-		logErr(errors.New("Error: " + string(respKN.Data)))
+		logError(fmt.Errorf("error: %s", string(res.Data)))
 	}
 
 	return data, nil
+}
+
+func MakeGetRequest(url string, body io.Reader, reqType RequestType, contentType ...string) ([]byte, error) {
+	return MakeRequest("GET", url, body, reqType)
+}
+
+func MakePostRequest(url string, body io.Reader, reqType RequestType, contentType ...string) ([]byte, error) {
+	return MakeRequest("POST", url, body, reqType)
+}
+
+func PostJSON[T any](url string, payload any) (T, error) {
+	var result T
+
+	jsonData, err := json.Marshal(payload)
+	if err != nil {
+		return result, fmt.Errorf("failed to marshal JSON: %w", err)
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBuffer(jsonData), RequestJSON)
+	if err != nil {
+		return result, err
+	}
+
+	err = json.Unmarshal(body, &result)
+	if err != nil {
+		return result, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result, nil
 }

@@ -16,6 +16,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"text/template"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
@@ -51,13 +52,13 @@ var printSubmissionsCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		firstPage, err := strconv.Atoi(args[2])
 		if err != nil {
-			logErr(fmt.Errorf("invalid first page number: %v", err))
+			logError(fmt.Errorf("invalid first page number: %v", err))
 			return
 		}
 
 		lastPage, err := strconv.Atoi(args[3])
 		if err != nil {
-			logErr(fmt.Errorf("invalid last page number: %v", err))
+			logError(fmt.Errorf("invalid last page number: %v", err))
 			return
 		}
 
@@ -124,13 +125,12 @@ func getSubmissionURL(userId, problemId string, offset int) string {
 	}
 }
 
-func parseSubmissionTime(timeStr string) string {
+func parseSubmissionTime(timeStr string) (string, error) {
 	parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
 	if err != nil {
-		logErr(fmt.Errorf("error parsing time: %v", err))
-		return ""
+		return "", fmt.Errorf("failed to parse time %q: %w", timeStr, err)
 	}
-	return parsedTime.Format("2006-01-02 15:04:05")
+	return parsedTime.Format("2006-01-02 15:04:05"), nil
 }
 
 func printSubmissions(problemId, userId string, firstPage, lastPage int) {
@@ -138,40 +138,42 @@ func printSubmissions(problemId, userId string, firstPage, lastPage int) {
 		userId = getUserID()
 	}
 
-	if firstPage > lastPage {
-		logErr(fmt.Errorf("first page cannot be bigger than the last page"))
+	if firstPage <= 0 || lastPage <= 0 {
+		logError(fmt.Errorf("invalid pages: both firstPage and lastPage must be positive integers"))
+		return
 	}
 
-	if firstPage < 0 || lastPage < 0 {
-		logErr(fmt.Errorf("pages need to be positive numbers, different from 0"))
+	if firstPage > lastPage {
+		logError(fmt.Errorf("firstPage cannot be greater than lastPage"))
+		return
 	}
 
 	var datasub SubmissionList
-
 	var rows []table.Row
-
-	count := -1
-	var startOffset = (firstPage - 1) * 50
-	var endOffset = max((lastPage-1)*50, 50)
+	var count = -1
+	startOffset := (firstPage - 1) * 50
+	endOffset := max((lastPage-1)*50, 50)
 
 	for offset := max(startOffset, 0); offset < count && offset < endOffset; offset += 50 {
-		var url = getSubmissionURL(userId, problemId, offset)
+		url := getSubmissionURL(userId, problemId, offset)
 
-		body, err := makeRequest("GET", url, nil, "1")
+		body, err := MakeGetRequest(url, nil, RequestFormAuth)
 		if err != nil {
-			logErr(err)
+			logError(err)
+			continue
 		}
 
-		err = json.Unmarshal(body, &datasub)
-		if err != nil {
-			logErr(err)
+		if err := json.Unmarshal(body, &datasub); err != nil {
+			logError(err)
+			continue
 		}
 
 		count = datasub.Data.Count
 
 		for _, problem := range datasub.Data.Submissions {
-			formattedTime := parseSubmissionTime(problem.CreatedAt)
-			if formattedTime == "" {
+			formattedTime, err := parseSubmissionTime(problem.CreatedAt)
+			if err != nil {
+				logError(err)
 				continue
 			}
 
@@ -204,88 +206,142 @@ func printSubmissions(problemId, userId string, firstPage, lastPage int) {
 
 	t.SetStyles(table.DefaultStyles())
 
-	p := tea.NewProgram(model{table: t}, tea.WithAltScreen())
+	p := tea.NewProgram(&Model{table: t}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		logErr(fmt.Errorf("error running program: %v", err))
+		logError(fmt.Errorf("error running program: %w", err))
 	}
 }
 
-func downloadSource(submission_id, code string) {
+func downloadSource(submissionId, code string) {
 	homedir, err := os.Getwd()
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("failed to get current working directory: %w", err))
+		return
 	}
-	configDir := filepath.Join(homedir)
-	downFile := filepath.Join(configDir, "source_"+submission_id+".txt")
-	file, err := os.Create(downFile)
-	if err != nil {
-		logErr(fmt.Errorf("error creating file: %v", err))
-	}
-	defer file.Close()
 
+	downFile := filepath.Join(homedir, "source_"+submissionId+".txt")
 	if err := os.WriteFile(downFile, []byte(code), 0644); err != nil {
-		logErr(fmt.Errorf("error writing source code to file: %v", err))
+		logError(fmt.Errorf("failed to write source code to file %q: %w", downFile, err))
+		return
 	}
+
+	fmt.Printf("Source code for submission #%s saved to %q\n", submissionId, downFile)
 }
 
 func printDetailsSubmission(submissionId string) {
+	var details SubmissionDetails
 
-	var datasub SubmissionDetails
-
-	subsid, err := strconv.Atoi(submissionId)
+	id, err := strconv.Atoi(submissionId)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("invalid submission ID %q: %w", submissionId, err))
+		return
 	}
 
-	url := fmt.Sprintf(URL_LATEST_SUBMISSION, subsid)
+	url := fmt.Sprintf(URL_LATEST_SUBMISSION, id)
 
 	formData := u.Values{
 		"id": {submissionId},
 	}
 
-	body, err := makeRequest("GET", url, bytes.NewBufferString(formData.Encode()), "0")
+	body, err := MakeGetRequest(url, bytes.NewBufferString(formData.Encode()), RequestNone)
 	if err != nil {
-		logErr(fmt.Errorf("error: %v", err))
+		logError(fmt.Errorf("error fetching submission details: %w", err))
+		return
 	}
 
-	err = json.Unmarshal(body, &datasub)
+	if err := json.Unmarshal(body, &details); err != nil {
+		logError(fmt.Errorf("error unmarshalling response: %w", err))
+		return
+	}
+
+	if details.Status != "success" {
+		logError(fmt.Errorf("submission fetch failed with status: %v", details.Status))
+		return
+	}
+
+	formattedTime, err := parseSubmissionTime(details.Data.CreatedAt)
 	if err != nil {
-		logErr(err)
+		logError(err)
+		return
 	}
 
-	if datasub.Status != "success" {
-		logErr(fmt.Errorf("error: %v", datasub.Status))
-	}
+	problemId := strconv.Itoa(details.Data.ProblemID)
+	fmt.Println(problemInfo(problemId))
 
-	parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.CreatedAt)
+	code, err := b64.StdEncoding.DecodeString(details.Data.Code)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("error decoding source code: %w", err))
+		return
 	}
 
-	formattedTime := parsedTime.Format("2006-01-02 15:04:05")
+	printSubmissionDetails(details, formattedTime, code)
 
-	pbid := strconv.Itoa(datasub.Data.ProblemID)
-
-	fmt.Println(problemInfo(pbid))
-
-	code, _ := b64.StdEncoding.DecodeString(datasub.Data.Code)
-
-	fmt.Printf("\nSubmission ID: #%d\nCreated: %s\nLanguage: %s\nScore: %.0f\n",
-		datasub.Data.Id, formattedTime,
-		datasub.Data.Language, datasub.Data.Score)
-	fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\nCode:\n%s\n",
-		datasub.Data.MaxMemory, datasub.Data.MaxTime,
-		datasub.Data.CompileError, datasub.Data.CompileMessage, code)
-
-	action := func() { downloadSource(submissionId, string(code)) }
 	if download {
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			logErr(err)
+		action := func() { downloadSource(submissionId, string(code)) }
+		if err := spinner.New().Title("Waiting for download...").Action(action).Run(); err != nil {
+			logError(fmt.Errorf("error during source code download for submission #%s: %w", submissionId, err))
 		}
 	}
 }
 
-// upload code
+type SubmissionDetailsTemplate struct {
+	ID             int
+	CreatedAt      string
+	Language       string
+	Score          float64
+	MaxMemory      int
+	MaxTime        float64
+	CompileError   bool
+	CompileMessage string
+	Code           string
+}
+
+func printSubmissionDetails(details SubmissionDetails, formattedTime string, code []byte) {
+	submissionData := SubmissionDetailsTemplate{
+		ID:             details.Data.Id,
+		CreatedAt:      formattedTime,
+		Language:       details.Data.Language,
+		Score:          details.Data.Score,
+		MaxMemory:      details.Data.MaxMemory,
+		MaxTime:        details.Data.MaxTime,
+		CompileError:   details.Data.CompileError,
+		CompileMessage: details.Data.CompileMessage,
+		Code:           formatCodeOutput(string(code)),
+	}
+
+	const submissionTemplate = `
+Submission ID: #{{.ID}}
+Created: {{.CreatedAt}}
+Language: {{.Language}}
+Score: {{.Score}}
+
+Max memory: {{.MaxMemory}}KB
+Max time: {{.MaxTime}}s
+Compile error: {{.CompileError}}
+Compile message: {{.CompileMessage}}
+
+Code:
+{{.Code}}
+`
+
+	tmpl, err := template.New("submissionDetails").Parse(submissionTemplate)
+	if err != nil {
+		logError(fmt.Errorf("failed to parse template: %w", err))
+		return
+	}
+
+	if err := tmpl.Execute(os.Stdout, submissionData); err != nil {
+		logError(fmt.Errorf("failed to execute template: %w", err))
+	}
+}
+
+func formatCodeOutput(code string) string {
+	if len(code) > 1000 {
+		return code[:1000] + "...\n"
+	}
+	return code
+}
+
 type Submit struct {
 	Status string `json:"status"`
 	Data   int    `json:"data"`
@@ -312,107 +368,145 @@ type LatestSubmission struct {
 }
 
 func checkLanguages(problemId string, useCase int) []string {
-	//get languages
 	url := fmt.Sprintf(URL_LANGS_PB, problemId)
-	body, err := makeRequest("GET", url, nil, "0")
+	body, err := MakeGetRequest(url, nil, RequestNone)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("failed to make request for problem ID %s: %w", problemId, err))
+		return nil
 	}
 
 	var langs Languages
 	if err := json.Unmarshal(body, &langs); err != nil {
-		logErr(fmt.Errorf("error unmarshalling response: %s", err))
+		logError(fmt.Errorf("error unmarshalling languages response: %w", err))
+		return nil
 	}
 
-	if useCase == 1 {
-		for i := range langs.Data {
-			fmt.Println(i+1, langs.Data[i].Name)
-		}
+	switch useCase {
+	case 1:
+		printLanguages(langs)
 		return nil
-	} else {
-		var listLangs []string
-		for i := range langs.Data {
-			listLangs = append(listLangs, langs.Data[i].Name)
-		}
-		return listLangs
+	default:
+		return extractLanguageNames(langs)
 	}
 }
 
-func uploadCode(id, language, file string) {
-	//upload code
+func printLanguages(langs Languages) {
+	for i, lang := range langs.Data {
+		fmt.Printf("%d: %s\n", i+1, lang.Name)
+	}
+}
 
+func extractLanguageNames(langs Languages) []string {
+	var listLangs []string
+	for _, lang := range langs.Data {
+		listLangs = append(listLangs, lang.Name)
+	}
+	return listLangs
+}
+
+func uploadCode(id, language, file string) {
 	codeFile, err := os.Open(file)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("failed to open code file %s: %w", file, err))
+		return
 	}
 	defer codeFile.Close()
 
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
+	defer writer.Close()
 
-	_ = writer.WriteField("problem_id", id)
-
-	_ = writer.WriteField("language", language)
-
-	fileWriter, err := writer.CreateFormFile("code", file)
-	if err != nil {
-		logErr(err)
-	}
-	_, err = io.Copy(fileWriter, codeFile)
-	if err != nil {
-		logErr(err)
+	if err := writeFormFields(writer, id, language); err != nil {
+		logError(err)
+		return
 	}
 
-	writer.Close()
+	if err := writeCodeFile(writer, file, codeFile); err != nil {
+		logError(err)
+		return
+	}
 
-	body, err := makeRequest("POST", URL_SUBMIT, io.Reader(&requestBody), string(writer.FormDataContentType()))
+	contentType := writer.FormDataContentType()
+
+	body, err := MakePostRequest(URL_SUBMIT, &requestBody, RequestMultipartForm, contentType)
 	if err != nil {
-		logErr(err)
+		logError(fmt.Errorf("error submitting code: %w", err))
+		return
 	}
 
 	var data Submit
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		var dataerr SubmitError
-		err = json.Unmarshal(body, &dataerr)
-		if err != nil {
-			logErr(err)
-		}
-		logErr(fmt.Errorf("status: %s\nmessage: %s", dataerr.Status, dataerr.Data))
+	if err := json.Unmarshal(body, &data); err != nil {
+		handleSubmissionError(body)
+		return
 	}
+
 	fmt.Printf("Submission sent: %s\nSubmission ID: %d\n", data.Status, data.Data)
+	checkSubmissionStatus(data.Data)
+}
 
-	url := fmt.Sprintf(URL_LATEST_SUBMISSION, data.Data)
+func writeFormFields(writer *multipart.Writer, id, language string) error {
+	if err := writer.WriteField("problem_id", id); err != nil {
+		return fmt.Errorf("failed to write problem_id field: %w", err)
+	}
+	if err := writer.WriteField("language", language); err != nil {
+		return fmt.Errorf("failed to write language field: %w", err)
+	}
+	return nil
+}
 
-	body, err = makeRequest("GET", url, nil, "0")
+func writeCodeFile(writer *multipart.Writer, file string, codeFile *os.File) error {
+	fileWriter, err := writer.CreateFormFile("code", file)
 	if err != nil {
-		logErr(err)
+		return fmt.Errorf("failed to create form file for code: %w", err)
 	}
+	if _, err := io.Copy(fileWriter, codeFile); err != nil {
+		return fmt.Errorf("failed to copy code file content: %w", err)
+	}
+	return nil
+}
 
-	var dataLatestSubmit LatestSubmission
-	if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
-		logErr(err)
+func handleSubmissionError(body []byte) {
+	var dataerr SubmitError
+	if err := json.Unmarshal(body, &dataerr); err != nil {
+		logError(fmt.Errorf("failed to parse error response: %w", err))
+		return
 	}
+	logError(fmt.Errorf("status: %s\nmessage: %s", dataerr.Status, dataerr.Data))
+}
+
+func checkSubmissionStatus(submissionID int) {
+	url := fmt.Sprintf(URL_LATEST_SUBMISSION, submissionID)
 
 	action := func() {
-		for dataLatestSubmit.Data.Status != "finished" {
-			fmt.Print(".")
-			body, err = makeRequest("GET", url, nil, "0")
+		var dataLatestSubmit LatestSubmission
+		for {
+			body, err := MakeGetRequest(url, nil, RequestNone)
 			if err != nil {
-				logErr(err)
+				logError(fmt.Errorf("failed to get submission status: %w", err))
+				return
 			}
 
-			if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
-				logErr(err)
+			if err := json.Unmarshal(body, &dataLatestSubmit); err != nil {
+				logError(fmt.Errorf("failed to parse latest submission response: %w", err))
+				return
 			}
+
+			if dataLatestSubmit.Data.Status == "finished" {
+				break
+			}
+
+			fmt.Print(".")
+		}
+
+		// Handle success or compilation failure
+		if dataLatestSubmit.Data.CompileError {
+			fmt.Println("\nCompilation failed! Score: 0")
+		} else {
+			fmt.Printf("\nSuccess! Score: %d\n", dataLatestSubmit.Data.Score)
 		}
 	}
+
 	if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-		logErr(err)
-	}
-	if !dataLatestSubmit.Data.CompileError {
-		fmt.Println("\nSuccess! Score: ", dataLatestSubmit.Data.Score)
-	} else {
-		fmt.Println("\nCompilation failed! Score: 0")
+		logError(fmt.Errorf("spinner error: %w", err))
 	}
 }
