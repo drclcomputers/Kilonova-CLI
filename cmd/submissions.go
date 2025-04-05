@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"mime/multipart"
 	u "net/url"
 	"os"
@@ -116,13 +115,11 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 	}
 
 	if fpag > lpag {
-		fmt.Println("First page cannot be bigger than the last page!")
-		return
+		logErr(fmt.Errorf("first page cannot be bigger than the last page"))
 	}
 
 	if fpag < strconv.Itoa(0) || lpag < strconv.Itoa(0) {
-		fmt.Println("Pages need to be positive numbers, different from 0!")
-		return
+		logErr(fmt.Errorf("pages need to be positive numbers, different from 0"))
 	}
 
 	//get submissions on problem
@@ -135,13 +132,11 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 	fpagnr, err := strconv.Atoi(fpag)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	lpagnr, err := strconv.Atoi(lpag)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	for offset := max((fpagnr-1)*50, 0); cnt == -1 || (offset < cnt && offset < max((lpagnr-1)*50, 50)); offset += 50 {
@@ -160,13 +155,11 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 		body, err := makeRequest("GET", url, nil, "1")
 		if err != nil {
 			logErr(err)
-			return
 		}
 
 		err = json.Unmarshal(body, &datasub)
 		if err != nil {
 			logErr(err)
-			return
 		}
 
 		cnt = datasub.Data.Count
@@ -177,7 +170,6 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 
 			if err != nil {
 				logErr(err)
-				return
 			}
 
 			rows = append(rows, table.Row{
@@ -211,7 +203,7 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 
 	p := tea.NewProgram(model{table: t}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		log.Fatalf("Error running program: %v", err)
+		logErr(fmt.Errorf("error running program: %v", err))
 	}
 
 }
@@ -225,13 +217,12 @@ func downloadSource(submission_id, code string) {
 	downFile := filepath.Join(configDir, "source_"+submission_id+".txt")
 	file, err := os.Create(downFile)
 	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
+		logErr(fmt.Errorf("error creating file: %v", err))
 	}
 	defer file.Close()
 
 	if err := os.WriteFile(downFile, []byte(code), 0644); err != nil {
-		log.Fatalf("Error writing source code to file: %v", err)
+		logErr(fmt.Errorf("error writing source code to file: %v", err))
 	}
 }
 
@@ -254,22 +245,19 @@ func printDetailsSubmissions(submission_id string) {
 
 	body, err := makeRequest("GET", url, bytes.NewBufferString(formData.Encode()), "0")
 	if err != nil {
-		log.Fatalf("Error: %v", err)
+		logErr(fmt.Errorf("error: %v", err))
 	}
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	err = json.Unmarshal(body, &datasub)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	if datasub.Status != "success" {
-		fmt.Println("error: ", datasub.Status)
-		return
+		logErr(fmt.Errorf("error: %v", datasub.Status))
 	}
 
 	parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.Created_at)
@@ -277,7 +265,6 @@ func printDetailsSubmissions(submission_id string) {
 
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	pbid := strconv.Itoa(datasub.Data.ProblemID)
@@ -296,7 +283,7 @@ func printDetailsSubmissions(submission_id string) {
 	action := func() { downloadSource(submission_id, string(code)) }
 	if download {
 		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			log.Fatal(err)
+			logErr(err)
 		}
 	}
 }
@@ -337,8 +324,7 @@ func checklangs(problem_id string, use_case int) []string {
 
 	var langs langs
 	if err := json.Unmarshal(body, &langs); err != nil {
-		fmt.Printf("error unmarshalling response: %s", err)
-		os.Exit(1)
+		logErr(fmt.Errorf("error unmarshalling response: %s", err))
 	}
 
 	if use_case == 1 {
@@ -395,7 +381,7 @@ func uploadCode(id, lang, file string) {
 		if err != nil {
 			logErr(err)
 		}
-		fmt.Printf("Status: %s\nMessage: %s\n", dataerr.Status, dataerr.Data)
+		logErr(fmt.Errorf("status: %s\nmessage: %s", dataerr.Status, dataerr.Data))
 	}
 	fmt.Printf("Submission sent: %s\nSubmission ID: %d\n", data.Status, data.Data)
 
@@ -425,7 +411,7 @@ func uploadCode(id, lang, file string) {
 		}
 	}
 	if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-		log.Fatal(err)
+		logErr(err)
 	}
 
 	if !dataLatestSubmit.Data.CompileError {

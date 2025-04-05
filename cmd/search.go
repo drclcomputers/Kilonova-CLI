@@ -9,8 +9,6 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	"log"
-	"os"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -109,7 +107,7 @@ func searchProblems(problem_name string) {
 
 	jsonData, err := json.Marshal(searchData)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+		logErr(fmt.Errorf("error marshaling JSON: %v", err))
 	}
 
 	body, err := makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
@@ -120,8 +118,7 @@ func searchProblems(problem_name string) {
 	var data search
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		fmt.Println("Error unmarshaling JSON:", err)
-		os.Exit(1)
+		logErr(fmt.Errorf("error unmarshaling JSON: %v", err))
 	}
 
 	if data.Data.Count == 0 {
@@ -190,7 +187,7 @@ func searchProblems(problem_name string) {
 
 	p := tea.NewProgram(modelsearch{table: t}, tea.WithAltScreen())
 	if _, err := p.Run(); err != nil {
-		log.Fatalf("Error running program: %v", err)
+		logErr(fmt.Errorf("error running program: %v", err))
 	}
 
 	if chosenPb != "" {
@@ -206,7 +203,7 @@ func searchProblems(problem_name string) {
 		for choice == "" {
 			key, _, err := keyboard.GetSingleKey()
 			if err != nil {
-				log.Fatal(err)
+				logErr(err)
 			}
 
 			switch {

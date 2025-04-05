@@ -8,6 +8,7 @@ package cmd
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -271,7 +272,9 @@ func readToken() (string, bool) {
 }
 
 func logErr(err error) {
-	log.Fatal(err)
+	red := "\033[31m"
+	reset := "\033[0m"
+	log.Fatal(red + err.Error() + reset)
 }
 
 func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, error) {
@@ -301,7 +304,7 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 		req.Header.Set("Authorization", token)
 	} else {
 		if use_case == "1" || use_case == "4" {
-			log.Fatal("You must be authenticated to do this")
+			logErr(fmt.Errorf("you must be authenticated to do this"))
 		}
 	}
 
@@ -330,8 +333,7 @@ func makeRequest(method, url string, body io.Reader, use_case string) ([]byte, e
 		if err := json.Unmarshal(data, &respKN); err != nil {
 			logErr(err)
 		}
-		fmt.Println("Error: " + string(respKN.Data))
-		os.Exit(1)
+		logErr(errors.New("Error: " + string(respKN.Data)))
 	}
 
 	return data, nil

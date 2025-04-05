@@ -9,6 +9,7 @@ import (
 	"archive/zip"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand/v2"
@@ -140,7 +141,7 @@ func createCBPProject(name string) {
 
 	File, err := os.Create(fmt.Sprintf("%s.cbp", name))
 	if err != nil {
-		fmt.Println("Error creating .cbp file:", err)
+		logErr(fmt.Errorf("error creating .cbp file: %v", err))
 		return
 	}
 	defer File.Close()
@@ -153,7 +154,7 @@ func createCMAKEProject(name string) {
 
 	File, err := os.Create("CMakeLists.txt")
 	if err != nil {
-		fmt.Println("Error creating \"CMakeLists.txt\":", err)
+		logErr(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
 		return
 	}
 	defer File.Close()
@@ -200,13 +201,11 @@ func getName(problem_id string) string {
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
-		os.Exit(1)
 	}
 
 	var info info
 	if err := json.Unmarshal(body, &info); err != nil {
 		logErr(err)
-		os.Exit(1)
 	}
 	return info.Data.Name
 }
@@ -229,27 +228,24 @@ func extractFunctionDeclarations(hFileContent string) []string {
 func initProject(problem_id, lang string) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		fmt.Printf("Could not get current working directory! Err: %v\n", err)
+		logErr(fmt.Errorf("could not get current working directory! error: %v", err))
 		return
 	}
 
 	newFolder := filepath.Join(cwd, fmt.Sprintf("Problem_%s_Proj_%s", problem_id, lang))
 	err = os.MkdirAll(newFolder, os.ModePerm)
 	if err != nil {
-		fmt.Printf("Could not create project directory! Err: %v\n", err)
-		return
+		logErr(fmt.Errorf("could not create project directory! error: %v", err))
 	}
 
 	err = os.Chdir(newFolder)
 	if err != nil {
-		fmt.Printf("Could not change directory to project dir! Err: %v\n", err)
-		return
+		logErr(fmt.Errorf("could not change directory to project dir! error: %v", err))
 	}
 
 	cwd, err = os.Getwd()
 	if err != nil {
-		fmt.Printf("Could not get current working directory! Err: %v\n", err)
-		return
+		logErr(fmt.Errorf("could not get current working directory! error: %v", err))
 	}
 
 	ok := false
@@ -264,10 +260,9 @@ func initProject(problem_id, lang string) {
 	}
 
 	if !ok {
-		fmt.Println("Problem is not available in the selected language!")
 		os.Chdir("..")
 		os.Remove(newFolder)
-		return
+		logErr(errors.New("problem is not available in the selected language"))
 	}
 
 	getAssets(problem_id)
@@ -298,15 +293,14 @@ func initProject(problem_id, lang string) {
 
 		hFileContent, err := os.ReadFile(headerFilename)
 		if err != nil {
-			fmt.Println("Error reading header file:", err)
-			return
+			logErr(fmt.Errorf("error reading header file: %v", err))
 		}
 
 		funcDecls := extractFunctionDeclarations(string(hFileContent))
 
 		cppFile, err := os.Create("Source.cpp")
 		if err != nil {
-			fmt.Println("Error creating .cpp file:", err)
+			logErr(fmt.Errorf("error creating .cpp file: %v", err))
 			return
 		}
 		defer cppFile.Close()
@@ -322,23 +316,24 @@ func initProject(problem_id, lang string) {
 		cppFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
 	}
 
-	auxStat := printStatement(problem_id, lang, 2)
+	auxStat := printStatement(problem_id, "RO", 2)
+	if auxStat == "nolang" {
+		auxStat = printStatement(problem_id, "EN", 2)
+	}
 
-	if !strings.Contains(auxStat, ".in") && (lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20") {
+	if !strings.Contains(auxStat, "stdin") && (lang == "cpp11" || lang == "cpp14" || lang == "cpp17" || lang == "cpp20") {
 		_ = os.Remove("Source.cpp")
 		cppFile, err := os.Create("Source.cpp")
 		if err != nil {
-			fmt.Println("Error creating .cpp file:", err)
-			return
+			logErr(fmt.Errorf("error creating .cpp file: %v", err))
 		}
 		defer cppFile.Close()
 		cppFile.WriteString(helloWorldprog[10])
-	} else if !strings.Contains(auxStat, ".in") && lang == "c" {
+	} else if !strings.Contains(auxStat, "stdin") && lang == "c" {
 		_ = os.Remove("Source.c")
 		cppFile, err := os.Create("Source.c")
 		if err != nil {
-			fmt.Println("Error creating .c file:", err)
-			return
+			logErr(fmt.Errorf("error creating .c file: %v", err))
 		}
 		defer cppFile.Close()
 		cppFile.WriteString(helloWorldprog[9])
@@ -362,7 +357,7 @@ func nrPbs() int {
 
 	jsonData, err := json.Marshal(searchData)
 	if err != nil {
-		fmt.Println("Error marshaling JSON:", err)
+		logErr(fmt.Errorf("error marshaling JSON: %v", err))
 	}
 
 	body, err := makeRequest("POST", URL_SEARCH, bytes.NewBuffer(jsonData), "2")
@@ -373,7 +368,7 @@ func nrPbs() int {
 	var data search
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		fmt.Println("Error unmarshaling JSON:", err)
+		logErr(fmt.Errorf("error unmarshaling JSON: %v", err))
 		os.Exit(1)
 	}
 

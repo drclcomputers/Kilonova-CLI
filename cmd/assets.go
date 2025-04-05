@@ -41,13 +41,13 @@ func getAssets(id string) {
 	outputFile := fmt.Sprintf("%s.zip", id)
 	data, err := makeRequest("GET", url, nil, "4")
 	if err != nil {
-		fmt.Println("Error making request:", err)
+		logErr(fmt.Errorf("error making request: %v", err))
 		return
 	}
 
 	err = saveToFile(outputFile, data)
 	if err != nil {
-		fmt.Println("Error saving file:", err)
+		logErr(fmt.Errorf("error saving file: %v", err))
 		return
 	}
 

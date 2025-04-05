@@ -8,9 +8,8 @@ package cmd
 import (
 	b64 "encoding/base64"
 	"encoding/json"
+	"errors"
 	"fmt"
-	"log"
-	"os"
 	"regexp"
 	"strings"
 
@@ -98,13 +97,11 @@ func problemInfo(id string) string {
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
-		os.Exit(1)
 	}
 
 	var info info
 	if err := json.Unmarshal(body, &info); err != nil {
 		logErr(err)
-		os.Exit(1)
 	}
 	return fmt.Sprintf("Name: %s\nID: #%s\nTime Limit: %.2fs\nMemory Limit: %dKB\nSource Size: %dKB\nCredits: %s\n",
 		info.Data.Name, id, info.Data.Time, info.Data.MemoryLimit,
@@ -120,7 +117,6 @@ func printStatement(id, language string, use_case int) string {
 	renderer, err := glamour.NewTermRenderer(glamour.WithStandardStyle("dark"))
 	if err != nil {
 		logErr(err)
-		return "error"
 	}
 
 	if language == "RO" {
@@ -130,23 +126,26 @@ func printStatement(id, language string, use_case int) string {
 	}
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
+		if use_case == 2 {
+			return "nolang"
+		}
 		logErr(err)
-		return "error"
 	}
 
 	if strings.Contains(string(body), `"status":"error"`) {
-		log.Fatal("Error: Problem statement is not available in the chosen language!")
+		logErr(errors.New("\"problem statement is not available in the chosen language\""))
 	}
 
 	var data statement
 	if err := json.Unmarshal(body, &data); err != nil {
 		logErr(err)
-		return "error"
 	}
 	text, err := b64.StdEncoding.DecodeString(data.Data.Data)
 	if err != nil {
+		if use_case == 2 {
+			return "nolang"
+		}
 		logErr(err)
-		return "error"
 	}
 	decodedtext := formatText(string(text))
 
@@ -157,12 +156,11 @@ func printStatement(id, language string, use_case int) string {
 	rendered, err := renderer.Render(problemInfo(id) + "\n# STATEMENT\n\n" + decodedtext)
 	if err != nil {
 		logErr(err)
-		return "error"
 	}
 
 	p := tea.NewProgram(newTextModel(rendered))
 	if _, err := p.Run(); err != nil {
-		fmt.Println("Error:", err)
+		logErr(err)
 	}
 
 	return ""

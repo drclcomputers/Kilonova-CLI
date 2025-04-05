@@ -53,7 +53,7 @@ var signinCmd = &cobra.Command{
 		username, password := LoginForm()
 		action := func() { login(username, password) }
 		if err := spinner.New().Title("Logging in...").Action(action).Run(); err != nil {
-			log.Fatal(err)
+			logErr(err)
 		}
 	},
 }
@@ -210,7 +210,7 @@ func LoginForm() (string, string) {
 	)
 
 	if err := form.Run(); err != nil {
-		log.Fatal(err)
+		logErr(err)
 	}
 
 	return username, password
@@ -225,16 +225,16 @@ func login(username, password string) {
 
 	body, err := makeRequest("POST", URL_LOGIN, bytes.NewBufferString(formData.Encode()), "3")
 	if err != nil {
-		log.Fatalf("Login failed: %v", err)
+		logErr(fmt.Errorf("login failed: %v", err))
 	}
 
 	if !bytes.Contains(body, []byte("success")) {
-		log.Fatal("Login failed: Invalid credentials!")
+		logErr(fmt.Errorf("login failed: invalid credentials"))
 	}
 
 	var response KNResponse
 	if err := json.Unmarshal(body, &response); err != nil {
-		log.Fatalf("Error parsing response: %v", err)
+		logErr(fmt.Errorf("error parsing response: %v", err))
 	}
 
 	homedir, err := os.UserHomeDir()
@@ -250,13 +250,12 @@ func login(username, password string) {
 
 	file, err := os.Create(tokenFile)
 	if err != nil {
-		fmt.Println("Error creating file:", err)
-		return
+		logErr(fmt.Errorf("error creating file: %v", err))
 	}
 	defer file.Close()
 
 	if err := os.WriteFile(tokenFile, []byte(response.Data), 0644); err != nil {
-		log.Fatalf("Error writing auth token to file: %v", err)
+		logErr(fmt.Errorf("error writing auth token to file: %v", err))
 	}
 
 	fmt.Println("Login successful!")
@@ -269,7 +268,6 @@ func logout() {
 	body, err := makeRequest("POST", URL_LOGOUT, bytes.NewBuffer(jsonData), "1")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	if bytes.Contains(body, []byte("success")) {
@@ -290,17 +288,15 @@ func logout() {
 func getBio(name string) string {
 	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", name))
 	if err != nil {
-		log.Fatal(err)
+		logErr(err)
 	}
 	defer res.Body.Close()
 
-	// Parse the HTML
 	doc, err := goquery.NewDocumentFromReader(res.Body)
 	if err != nil {
-		log.Fatal(err)
+		logErr(err)
 	}
 
-	// Find the About Me section and extract text from <p>
 	bio := doc.Find("div.segment-panel.reset-list.statement-content.enhance-tables p").First().Text()
 
 	return bio
@@ -317,7 +313,6 @@ func userGetDetails(user_id, use_case string) bool {
 	body, err := makeRequest("GET", url, nil, "3")
 	if err != nil {
 		logErr(err)
-		return false
 	}
 
 	var dataUser userDetailResp
@@ -325,7 +320,6 @@ func userGetDetails(user_id, use_case string) bool {
 	err = json.Unmarshal(body, &dataUser)
 	if err != nil {
 		logErr(err)
-		return false
 	}
 
 	if dataUser.Data.DisplayName == "" {
@@ -354,7 +348,6 @@ func userGetSolvedProblems(user_id string) {
 	body, err := makeRequest("GET", url, nil, "3")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataUser userSolvedProblems
@@ -362,7 +355,6 @@ func userGetSolvedProblems(user_id string) {
 	err = json.Unmarshal(body, &dataUser)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var rows []table.Row
@@ -395,7 +387,7 @@ func userGetSolvedProblems(user_id string) {
 
 	p := tea.NewProgram(model{table: t}, tea.WithAltScreen())
 	if t, err := p.Run(); err != nil {
-		log.Fatalf("Error running program: %s %v", t, err)
+		logErr(fmt.Errorf("error running program: %s %v", t, err))
 	}
 }
 
@@ -409,20 +401,17 @@ func extendSession() {
 	body, err := makeRequest("POST", URL_EXTEND_SESSION, nil, "1")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var resp KNResponse
 	if err := json.Unmarshal(body, &resp); err != nil {
-		fmt.Printf("error unmarshalling response: %s", err)
-		return
+		logErr(fmt.Errorf("error unmarshalling response: %s", err))
 	}
 
 	if resp.Status == "success" {
 		parsedTime, err := time.Parse(time.RFC3339Nano, resp.Data)
 		if err != nil {
 			logErr(err)
-			return
 		}
 		formattedTime := parsedTime.Format("2006-01-02 15:04:05")
 		fmt.Println("Your session has been extended until ", formattedTime)
@@ -443,21 +432,18 @@ func setBio(bio string) {
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Println("Error encoding JSON:", err)
-		return
+		logErr(fmt.Errorf("error encoding JSON: %v", err))
 	}
 
 	body, err := makeRequest("POST", URL_SELF_SET_BIO, bytes.NewBuffer(jsonData), "2")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataKN KNResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	if dataKN.Status == "success" {
@@ -472,27 +458,24 @@ func changeName(newName, password string) {
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Println("Error encoding JSON:", err)
-		return
+		logErr(fmt.Errorf("error encoding JSON: %v", err))
 	}
 
 	body, err := makeRequest("POST", URL_CHANGE_NAME, bytes.NewBuffer(jsonData), "2")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataKN KNResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	if dataKN.Status == "success" {
 		fmt.Println("Success! Name changed!")
 	} else {
-		fmt.Println("Error: Failed to change name!")
+		logErr(fmt.Errorf("error: Failed to change name"))
 	}
 }
 
@@ -501,28 +484,25 @@ func changePass(oldpass, newpass string) {
 
 	jsonData, err := json.Marshal(data)
 	if err != nil {
-		fmt.Println("Error encoding JSON:", err)
-		return
+		logErr(fmt.Errorf("error encoding JSON: %v", err))
 	}
 
 	body, err := makeRequest("POST", URL_CHANGE_PASS, bytes.NewBuffer(jsonData), "2")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataKN KNResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	if dataKN.Status == "success" {
 		fmt.Println("Success! password changed! You'll have to login again with your new credentials!")
 		logout()
 	} else {
-		fmt.Println("Error: Failed to change password!")
+		logErr(fmt.Errorf("error: Failed to change password"))
 	}
 }
 
@@ -537,20 +517,18 @@ func changeEmail(email, password string) {
 	body, err := makeRequest("POST", URL_CHANGE_EMAIL, bytes.NewBuffer(data), "1")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataKN KNResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	if dataKN.Status == "success" {
 		fmt.Println("Success! Email changed!")
 	} else {
-		fmt.Println("Error: Failed to change email!")
+		logErr(fmt.Errorf("error: Failed to change email"))
 	}
 }
 
@@ -570,14 +548,12 @@ func resetPass(email string) {
 	body, err := makeRequest("POST", URL_CHANGE_PASS, bytes.NewBuffer(data), "1")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataKN KNResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	fmt.Println(dataKN.Data)
@@ -587,14 +563,12 @@ func resendEmail() {
 	body, err := makeRequest("POST", URL_RESEND_MAIL, nil, "2")
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	var dataKN KNResponse
 	err = json.Unmarshal(body, &dataKN)
 	if err != nil {
 		logErr(err)
-		return
 	}
 
 	fmt.Println(dataKN.Data)
