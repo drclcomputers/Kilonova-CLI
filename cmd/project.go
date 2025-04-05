@@ -137,7 +137,7 @@ func Unzip(src string, dest string) error {
 }
 
 func createCBPProject(name string) {
-	xmlCBP := fmt.Sprintf(XMLCBPStruct, name)
+	xmlCBP := fmt.Sprintf(XMLCBPStruct, name, name, name)
 
 	File, err := os.Create(fmt.Sprintf("%s.cbp", name))
 	if err != nil {

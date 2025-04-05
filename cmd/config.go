@@ -62,7 +62,7 @@ const (
 		<Option compiler="gcc" />
 		<Build>
 			<Target title="Debug">
-				<Option output="bin/Debug/probleme" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Debug/%s" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Debug/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
@@ -71,7 +71,7 @@ const (
 				</Compiler>
 			</Target>
 			<Target title="Release">
-				<Option output="bin/Release/probleme" prefix_auto="1" extension_auto="1" />
+				<Option output="bin/Release/%s" prefix_auto="1" extension_auto="1" />
 				<Option object_output="obj/Release/" />
 				<Option type="1" />
 				<Option compiler="gcc" />
