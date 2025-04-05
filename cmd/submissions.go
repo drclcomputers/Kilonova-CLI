@@ -40,7 +40,7 @@ var checkLangsCmd = &cobra.Command{
 	Short: "View available languages for solutions.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		checklangs(args[0], 1)
+		checkLanguages(args[0], 1)
 	},
 }
 
@@ -49,7 +49,19 @@ var printSubmissionsCmd = &cobra.Command{
 	Short: "View sent submissions to a problem.",
 	Args:  cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
-		printSubmissions(args[0], args[1], args[2], args[3])
+		firstPage, err := strconv.Atoi(args[2])
+		if err != nil {
+			logErr(fmt.Errorf("invalid first page number: %v", err))
+			return
+		}
+
+		lastPage, err := strconv.Atoi(args[3])
+		if err != nil {
+			logErr(fmt.Errorf("invalid last page number: %v", err))
+			return
+		}
+
+		printSubmissions(args[0], args[1], firstPage, lastPage)
 	},
 }
 
@@ -58,7 +70,7 @@ var printSubmInfoCmd = &cobra.Command{
 	Short: "View a detailed description of a sent submission.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		printDetailsSubmissions(args[0])
+		printDetailsSubmission(args[0])
 	},
 }
 
@@ -73,84 +85,77 @@ func init() {
 
 // print submissions
 
-type submissionlist struct {
+type SubmissionData struct {
+	UserID         int     `json:"user_id"`
+	ProblemID      int     `json:"problem_id"`
+	Id             int     `json:"id"`
+	CreatedAt      string  `json:"created_at"`
+	Language       string  `json:"language"`
+	Score          float64 `json:"score"`
+	MaxMemory      int     `json:"max_memory"`
+	MaxTime        float64 `json:"max_time"`
+	CompileError   bool    `json:"compile_error"`
+	CompileMessage string  `json:"compile_message"`
+	Code           string  `json:"code,omitempty"`
+}
+
+type SubmissionList struct {
 	Data struct {
-		Submissions []struct {
-			UserID          int     `json:"user_id"`
-			ProblemID       int     `json:"problem_id"`
-			Id              int     `json:"id"`
-			Created_at      string  `json:"created_at"`
-			Language        string  `json:"language"`
-			Score           float64 `json:"score"`
-			Max_memory      int     `json:"max_memory"`
-			Max_time        float64 `json:"max_time"`
-			Compile_error   bool    `json:"compile_error"`
-			Compile_message string  `json:"compile_message"`
-		}
-		Count int    `json:"count"`
-		Code  string `json:"code"`
+		Submissions []SubmissionData `json:"submissions"`
+		Count       int              `json:"count"`
 	} `json:"data"`
 }
 
-type submissiondetails struct {
-	Status string `json:"status"`
-	Data   struct {
-		UserID          int     `json:"user_id"`
-		ProblemID       int     `json:"problem_id"`
-		Id              int     `json:"id"`
-		Created_at      string  `json:"created_at"`
-		Language        string  `json:"language"`
-		Score           float64 `json:"score"`
-		Max_memory      int     `json:"max_memory"`
-		Max_time        float64 `json:"max_time"`
-		Compile_error   bool    `json:"compile_error"`
-		Compile_message string  `json:"compile_message"`
-		Code            string  `json:"code"`
-	} `json:"data"`
+type SubmissionDetails struct {
+	Status string         `json:"status"`
+	Data   SubmissionData `json:"data"`
 }
 
-func printSubmissions(problem_id, user_id, fpag, lpag string) {
-	if user_id == "me" {
-		user_id = getUserID()
+func getSubmissionURL(userId, problemId string, offset int) string {
+	switch {
+	case userId == "all" && problemId == "all":
+		return fmt.Sprintf(URL_SUBMISSION_LIST_NO_FILTER, offset)
+	case userId == "all":
+		return fmt.Sprintf(URL_SUBMISSION_LIST_NO_USER, offset, problemId)
+	case problemId == "all":
+		return fmt.Sprintf(URL_SUBMISSION_LIST_NO_PROBLEM, offset, userId)
+	default:
+		return fmt.Sprintf(URL_SUBMISSION_LIST, offset, problemId, userId)
+	}
+}
+
+func parseSubmissionTime(timeStr string) string {
+	parsedTime, err := time.Parse(time.RFC3339Nano, timeStr)
+	if err != nil {
+		logErr(fmt.Errorf("error parsing time: %v", err))
+		return ""
+	}
+	return parsedTime.Format("2006-01-02 15:04:05")
+}
+
+func printSubmissions(problemId, userId string, firstPage, lastPage int) {
+	if userId == "me" {
+		userId = getUserID()
 	}
 
-	if fpag > lpag {
+	if firstPage > lastPage {
 		logErr(fmt.Errorf("first page cannot be bigger than the last page"))
 	}
 
-	if fpag < strconv.Itoa(0) || lpag < strconv.Itoa(0) {
+	if firstPage < 0 || lastPage < 0 {
 		logErr(fmt.Errorf("pages need to be positive numbers, different from 0"))
 	}
 
-	//get submissions on problem
-
-	var datasub submissionlist
+	var datasub SubmissionList
 
 	var rows []table.Row
 
-	cnt := -1
-	fpagnr, err := strconv.Atoi(fpag)
-	if err != nil {
-		logErr(err)
-	}
+	count := -1
+	var startOffset = (firstPage - 1) * 50
+	var endOffset = max((lastPage-1)*50, 50)
 
-	lpagnr, err := strconv.Atoi(lpag)
-	if err != nil {
-		logErr(err)
-	}
-
-	for offset := max((fpagnr-1)*50, 0); cnt == -1 || (offset < cnt && offset < max((lpagnr-1)*50, 50)); offset += 50 {
-		var url string
-		switch {
-		case user_id == "all" && problem_id == "all":
-			url = fmt.Sprintf(URL_SUBMISSION_LIST_NO_FILTER, offset)
-		case user_id == "all":
-			url = fmt.Sprintf(URL_SUBMISSION_LIST_NO_USER, offset, problem_id)
-		case problem_id == "all":
-			url = fmt.Sprintf(URL_SUBMISSION_LIST_NO_PROBLEM, offset, user_id)
-		default:
-			url = fmt.Sprintf(URL_SUBMISSION_LIST, offset, problem_id, user_id)
-		}
+	for offset := max(startOffset, 0); offset < count && offset < endOffset; offset += 50 {
+		var url = getSubmissionURL(userId, problemId, offset)
 
 		body, err := makeRequest("GET", url, nil, "1")
 		if err != nil {
@@ -162,14 +167,12 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 			logErr(err)
 		}
 
-		cnt = datasub.Data.Count
+		count = datasub.Data.Count
 
 		for _, problem := range datasub.Data.Submissions {
-			parsedTime, err := time.Parse(time.RFC3339Nano, problem.Created_at)
-			formattedTime := parsedTime.Format("2006-01-02 15:04:05")
-
-			if err != nil {
-				logErr(err)
+			formattedTime := parseSubmissionTime(problem.CreatedAt)
+			if formattedTime == "" {
+				continue
 			}
 
 			rows = append(rows, table.Row{
@@ -205,7 +208,6 @@ func printSubmissions(problem_id, user_id, fpag, lpag string) {
 	if _, err := p.Run(); err != nil {
 		logErr(fmt.Errorf("error running program: %v", err))
 	}
-
 }
 
 func downloadSource(submission_id, code string) {
@@ -226,13 +228,11 @@ func downloadSource(submission_id, code string) {
 	}
 }
 
-func printDetailsSubmissions(submission_id string) {
+func printDetailsSubmission(submissionId string) {
 
-	//get submissions on problem
+	var datasub SubmissionDetails
 
-	var datasub submissiondetails
-
-	subsid, err := strconv.Atoi(submission_id)
+	subsid, err := strconv.Atoi(submissionId)
 	if err != nil {
 		logErr(err)
 	}
@@ -240,15 +240,12 @@ func printDetailsSubmissions(submission_id string) {
 	url := fmt.Sprintf(URL_LATEST_SUBMISSION, subsid)
 
 	formData := u.Values{
-		"id": {submission_id},
+		"id": {submissionId},
 	}
 
 	body, err := makeRequest("GET", url, bytes.NewBufferString(formData.Encode()), "0")
 	if err != nil {
 		logErr(fmt.Errorf("error: %v", err))
-	}
-	if err != nil {
-		logErr(err)
 	}
 
 	err = json.Unmarshal(body, &datasub)
@@ -260,12 +257,12 @@ func printDetailsSubmissions(submission_id string) {
 		logErr(fmt.Errorf("error: %v", datasub.Status))
 	}
 
-	parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.Created_at)
-	formattedTime := parsedTime.Format("2006-01-02 15:04:05")
-
+	parsedTime, err := time.Parse(time.RFC3339Nano, datasub.Data.CreatedAt)
 	if err != nil {
 		logErr(err)
 	}
+
+	formattedTime := parsedTime.Format("2006-01-02 15:04:05")
 
 	pbid := strconv.Itoa(datasub.Data.ProblemID)
 
@@ -277,10 +274,10 @@ func printDetailsSubmissions(submission_id string) {
 		datasub.Data.Id, formattedTime,
 		datasub.Data.Language, datasub.Data.Score)
 	fmt.Printf("Max Memory: %dKB\nMax time: %.2fs\nCompile error: %t\nCompile message: %s\n\nCode:\n%s\n",
-		datasub.Data.Max_memory, datasub.Data.Max_time,
-		datasub.Data.Compile_error, datasub.Data.Compile_message, code)
+		datasub.Data.MaxMemory, datasub.Data.MaxTime,
+		datasub.Data.CompileError, datasub.Data.CompileMessage, code)
 
-	action := func() { downloadSource(submission_id, string(code)) }
+	action := func() { downloadSource(submissionId, string(code)) }
 	if download {
 		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
 			logErr(err)
@@ -289,23 +286,23 @@ func printDetailsSubmissions(submission_id string) {
 }
 
 // upload code
-type submit struct {
+type Submit struct {
 	Status string `json:"status"`
 	Data   int    `json:"data"`
 }
 
-type submiterr struct {
+type SubmitError struct {
 	Status string `json:"status"`
 	Data   string `json:"data"`
 }
 
-type langs struct {
+type Languages struct {
 	Data []struct {
 		Name string `json:"internal_name"`
 	} `json:"data"`
 }
 
-type latestSubmission struct {
+type LatestSubmission struct {
 	Status string `json:"status"`
 	Data   struct {
 		Status       string `json:"status"`
@@ -314,20 +311,20 @@ type latestSubmission struct {
 	}
 }
 
-func checklangs(problem_id string, use_case int) []string {
+func checkLanguages(problemId string, useCase int) []string {
 	//get languages
-	url := fmt.Sprintf(URL_LANGS_PB, problem_id)
+	url := fmt.Sprintf(URL_LANGS_PB, problemId)
 	body, err := makeRequest("GET", url, nil, "0")
 	if err != nil {
 		logErr(err)
 	}
 
-	var langs langs
+	var langs Languages
 	if err := json.Unmarshal(body, &langs); err != nil {
 		logErr(fmt.Errorf("error unmarshalling response: %s", err))
 	}
 
-	if use_case == 1 {
+	if useCase == 1 {
 		for i := range langs.Data {
 			fmt.Println(i+1, langs.Data[i].Name)
 		}
@@ -341,7 +338,7 @@ func checklangs(problem_id string, use_case int) []string {
 	}
 }
 
-func uploadCode(id, lang, file string) {
+func uploadCode(id, language, file string) {
 	//upload code
 
 	codeFile, err := os.Open(file)
@@ -355,7 +352,7 @@ func uploadCode(id, lang, file string) {
 
 	_ = writer.WriteField("problem_id", id)
 
-	_ = writer.WriteField("language", lang)
+	_ = writer.WriteField("language", language)
 
 	fileWriter, err := writer.CreateFormFile("code", file)
 	if err != nil {
@@ -373,10 +370,10 @@ func uploadCode(id, lang, file string) {
 		logErr(err)
 	}
 
-	var data submit
+	var data Submit
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		var dataerr submiterr
+		var dataerr SubmitError
 		err = json.Unmarshal(body, &dataerr)
 		if err != nil {
 			logErr(err)
@@ -392,7 +389,7 @@ func uploadCode(id, lang, file string) {
 		logErr(err)
 	}
 
-	var dataLatestSubmit latestSubmission
+	var dataLatestSubmit LatestSubmission
 	if err = json.Unmarshal(body, &dataLatestSubmit); err != nil {
 		logErr(err)
 	}
@@ -413,11 +410,9 @@ func uploadCode(id, lang, file string) {
 	if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
 		logErr(err)
 	}
-
 	if !dataLatestSubmit.Data.CompileError {
-		fmt.Println("\nSucces! Score: ", dataLatestSubmit.Data.Score)
+		fmt.Println("\nSuccess! Score: ", dataLatestSubmit.Data.Score)
 	} else {
 		fmt.Println("\nCompilation failed! Score: 0")
 	}
-
 }

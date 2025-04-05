@@ -248,7 +248,7 @@ func initProject(problem_id, lang string) {
 
 	ok := false
 
-	supportedLangs := checklangs(problem_id, 2)
+	supportedLangs := checkLanguages(problem_id, 2)
 	for i := range supportedLangs {
 		if lang == supportedLangs[i] {
 			ok = true
