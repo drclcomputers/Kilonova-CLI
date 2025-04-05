@@ -344,12 +344,10 @@ func initProject(problem_id, lang string) {
 	}
 
 	if cbp {
-		fmt.Println(cbp)
 		createCBPProject(problem_id)
 	}
 
 	if cmake {
-		fmt.Println(cmake)
 		createCMAKEProject(problem_id)
 	}
 
