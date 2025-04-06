@@ -46,6 +46,11 @@ type UserSolvedProblems struct {
 
 // cobra vars
 
+var settingsCmd = &cobra.Command{
+	Use:   "settings [command] ...",
+	Short: "Modify your account.",
+}
+
 var signinCmd = &cobra.Command{
 	Use:   "signin [username] [password]",
 	Short: "Sign in to your account",
@@ -182,17 +187,19 @@ func init() {
 	rootCmd.AddCommand(signinCmd)
 	rootCmd.AddCommand(logoutCmd)
 	rootCmd.AddCommand(userGetDetailsCmd)
-	rootCmd.AddCommand(extendSessionCmd)
+	settingsCmd.AddCommand(extendSessionCmd)
 	rootCmd.AddCommand(userSolvedProblemsCmd)
-	rootCmd.AddCommand(setBioCmd)
-	rootCmd.AddCommand(changeNameCmd)
-	rootCmd.AddCommand(changePassCmd)
-	rootCmd.AddCommand(changeEmailCmd)
-	rootCmd.AddCommand(resetPassCmd)
-	rootCmd.AddCommand(deleteUserCmd)
-	rootCmd.AddCommand(resendEmailCmd)
-	rootCmd.AddCommand(amILoggedInCmd)
-	rootCmd.AddCommand(amIAdminCmd)
+	settingsCmd.AddCommand(setBioCmd)
+	settingsCmd.AddCommand(changeNameCmd)
+	settingsCmd.AddCommand(changePassCmd)
+	settingsCmd.AddCommand(changeEmailCmd)
+	settingsCmd.AddCommand(resetPassCmd)
+	settingsCmd.AddCommand(deleteUserCmd)
+	settingsCmd.AddCommand(resendEmailCmd)
+	settingsCmd.AddCommand(amILoggedInCmd)
+	settingsCmd.AddCommand(amIAdminCmd)
+
+	rootCmd.AddCommand(settingsCmd)
 }
 
 // login
