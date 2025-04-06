@@ -270,7 +270,6 @@ func readToken() (string, bool) {
 	tokenPath := filepath.Join(homedir, ".config", "kn-cli", "token")
 	data, err := os.ReadFile(tokenPath)
 	if err != nil {
-		logError(fmt.Errorf("failed to read token file: %w", err))
 		return "", false
 	}
 
