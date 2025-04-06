@@ -16,13 +16,16 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 	"text/template"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/huh/spinner"
+	"github.com/fatih/color"
 	"github.com/spf13/cobra"
+	"github.com/zyedidia/highlight"
 )
 
 var download bool = false
@@ -306,7 +309,7 @@ func printSubmissionDetails(details SubmissionDetails, formattedTime string, cod
 		MaxTime:        details.Data.MaxTime,
 		CompileError:   details.Data.CompileError,
 		CompileMessage: details.Data.CompileMessage,
-		Code:           formatCodeOutput(string(code)),
+		Code:           formatCodeOutput(string(code), details.Data.Language),
 	}
 
 	const submissionTemplate = `
@@ -335,11 +338,66 @@ Code:
 	}
 }
 
-func formatCodeOutput(code string) string {
+func formatCodeOutput(code string, lang string) string {
 	if len(code) > 1000 {
-		return code[:1000] + "...\n"
+		code = code[:1000] + "...\n"
 	}
-	return code
+
+	// More syntax files: https://github.com/zyedidia/highlight
+	syntaxFile, err := os.ReadFile("highlight/" + lang + ".yaml")
+	if err != nil {
+		logError(fmt.Errorf("No syntax file for lang (%w)", err))
+	}
+
+	syntaxDef, err := highlight.ParseDef(syntaxFile)
+	if err != nil {
+		return code
+	}
+	h := highlight.NewHighlighter(syntaxDef)
+	matches := h.HighlightString(code)
+
+	var highlightedCode string
+
+	lines := strings.Split(code, "\n")
+	var printHl = color.New(color.Reset).SprintFunc()
+	for lineN, l := range lines {
+		for colN, c := range l {
+
+			if group, ok := matches[lineN][colN]; ok {
+				if group == highlight.Groups["statement"] {
+					printHl = color.New(color.FgGreen).SprintFunc()
+				} else if group == highlight.Groups["preproc"] {
+					printHl = color.New(color.FgHiRed).SprintFunc()
+				} else if group == highlight.Groups["identifier"] {
+					printHl = color.New(color.FgRed).SprintFunc()
+				} else if group == highlight.Groups["function"] {
+					printHl = color.New(color.FgBlue).SprintFunc()
+				} else if group == highlight.Groups["constant.string"] {
+					printHl = color.New(color.FgHiCyan).SprintFunc()
+				} else if group == highlight.Groups["constant.specialChar"] {
+					printHl = color.New(color.FgHiMagenta).SprintFunc()
+				} else if group == highlight.Groups["constant.number"] {
+					printHl = color.New(color.FgHiBlue).SprintFunc()
+				} else if group == highlight.Groups["constant.bool"] {
+					printHl = color.New(color.FgHiBlue).SprintFunc()
+				} else if group == highlight.Groups["symbol.brackets"] {
+					printHl = color.New(color.FgRed).SprintFunc()
+				} else if group == highlight.Groups["type"] {
+					printHl = color.New(color.FgYellow).SprintFunc()
+				} else if group == highlight.Groups["comment"] {
+					printHl = color.New(color.FgHiBlack).SprintFunc()
+				} else {
+					printHl = color.New(color.Reset).SprintFunc()
+				}
+			}
+
+			highlightedCode += printHl(string(c))
+		}
+
+		highlightedCode += "\n"
+	}
+
+	return highlightedCode
 }
 
 type Submit struct {
