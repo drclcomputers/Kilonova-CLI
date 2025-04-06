@@ -68,11 +68,20 @@ var viewAnnouncementsContestCmd = &cobra.Command{
 }
 
 var viewAllQuestionsContestCmd = &cobra.Command{
-	Use:   "questions [ID]",
+	Use:   "allquestions [ID]",
 	Short: "View all contest questions.",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		viewAllQuestionsContest(args[0])
+	},
+}
+
+var viewMyQuestionsContestCmd = &cobra.Command{
+	Use:   "myquestions [ID]",
+	Short: "View yout contest questions.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		viewMyQuestionsContest(args[0])
 	},
 }
 
@@ -82,6 +91,15 @@ var askQuestionContestCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		askQuestion(args[0], args[1])
+	},
+}
+
+var respondQuestionContestCmd = &cobra.Command{
+	Use:   "respond [ID] [question ID] [text]",
+	Short: "Respond to a question.",
+	Args:  cobra.ExactArgs(3),
+	Run: func(cmd *cobra.Command, args []string) {
+		answerQuestion(args[0], args[1], args[2])
 	},
 }
 
@@ -133,6 +151,16 @@ var showProblemsContestCmd = &cobra.Command{
 	},
 }
 
+/*
+var leaderboardContestCmd = &cobra.Command{
+	Use:   "leaderboard [ID]",
+	Short: "Show contest leaderboard.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		leaderboard(args[0])
+	},
+}*/
+
 func init() {
 	ContestCmd.AddCommand(createContestCmd)
 	ContestCmd.AddCommand(deleteContestCmd)
@@ -140,12 +168,15 @@ func init() {
 	ContestCmd.AddCommand(startContestCmd)
 	ContestCmd.AddCommand(viewAnnouncementsContestCmd)
 	ContestCmd.AddCommand(viewAllQuestionsContestCmd)
+	ContestCmd.AddCommand(viewMyQuestionsContestCmd)
 	ContestCmd.AddCommand(askQuestionContestCmd)
+	ContestCmd.AddCommand(respondQuestionContestCmd)
 	ContestCmd.AddCommand(createAnnouncementContestCmd)
 	ContestCmd.AddCommand(updateAnnouncementContestCmd)
 	ContestCmd.AddCommand(deleteAnnouncementContestCmd)
 	ContestCmd.AddCommand(updateProblemsContestCmd)
 	ContestCmd.AddCommand(showProblemsContestCmd)
+	//ContestCmd.AddCommand(leaderboardContestCmd)
 
 	rootCmd.AddCommand(ContestCmd)
 }
@@ -328,6 +359,32 @@ func askQuestion(contest_id, text string) {
 	}
 }
 
+func answerQuestion(contest_id, question_id, text string) {
+	url := fmt.Sprintf(URL_CONTEST_RESPOND_QUESTION, contest_id)
+
+	formData := u.Values{
+		"text":       {text},
+		"questionID": {question_id},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		logError(fmt.Errorf("failed to decode response: %w", err))
+	}
+
+	if data.Status != "success" {
+		fmt.Println("Failed to respond to question!")
+	} else {
+		fmt.Println(string(data.Data))
+	}
+}
+
 func updateProblems(contest_id string, problems_id []string) {
 	url := fmt.Sprintf(URL_CONTEST_UPDATE_PROBLEMS, contest_id)
 
@@ -487,6 +544,67 @@ func viewAllQuestionsContest(contest_id string) {
 	}
 }
 
+func viewMyQuestionsContest(contest_id string) {
+	url := fmt.Sprintf(URL_CONTEST_YOUR_QUESTIONS, contest_id)
+	body, err := MakeGetRequest(url, nil, RequestNone)
+	if err != nil {
+		logError(err)
+	}
+	var data contestquestions
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	ok := false
+
+	var rows []table.Row
+
+	if data.Status != "success" {
+		logError(fmt.Errorf("couldn't retrieve questions"))
+	} else {
+		for _, quest := range data.Data {
+			ok = true
+			formattedTime, err := parseSubmissionTime(quest.Time)
+			if err != nil {
+				logError(err)
+			}
+
+			rows = append(rows, table.Row{
+				formattedTime,
+				fmt.Sprintf("%d", quest.Id),
+				quest.Text,
+				quest.Response,
+			})
+
+		}
+	}
+
+	if !ok {
+		fmt.Println("No questions have been asked!")
+	} else {
+		columns := []table.Column{
+			{Title: "Time", Width: 19},
+			{Title: "ID", Width: 5},
+			{Title: "Text", Width: 35},
+			{Title: "Response", Width: 21},
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+			table.WithHeight(20),
+		)
+
+		t.SetStyles(table.DefaultStyles())
+
+		p := tea.NewProgram(&Model{table: t}, tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			logError(fmt.Errorf("error running program: %w", err))
+		}
+	}
+}
+
 func showProblems(contest_id string) {
 	url := fmt.Sprintf(URL_CONTEST_PROBLEMS, contest_id)
 	body, err := MakeGetRequest(url, nil, RequestNone)
@@ -541,3 +659,10 @@ func showProblems(contest_id string) {
 	}
 
 }
+
+/*func leaderboard(contest_id string) {
+url := fmt.Sprintf(URL_CONTEST_ALL_QUESTIONS, contest_id)
+body, err := MakeGetRequest(url, nil, RequestNone)
+if err != nil {
+	logError(err)
+}}*/
