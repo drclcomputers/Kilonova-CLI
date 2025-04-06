@@ -35,11 +35,15 @@ var highlightDir embed.FS
 var download bool = false
 
 var uploadCodeCmd = &cobra.Command{
-	Use:   "submit [ID] [LANGUAGE] [FILENAME]",
+	Use:   "submit [ID] [LANGUAGE] [FILENAME] [Contest ID (optional)]",
 	Short: "Submit solution to problem.",
-	Args:  cobra.ExactArgs(3),
+	Args:  cobra.MinimumNArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
-		uploadCode(args[0], args[1], args[2])
+		if len(args) == 3 {
+			uploadCode(args[0], args[1], args[2], "NO")
+		} else {
+			uploadCode(args[0], args[1], args[2], args[3])
+		}
 	},
 }
 
@@ -343,8 +347,8 @@ Code:
 }
 
 func formatCodeOutput(code string, lang string) string {
-	if len(code) > 1000 {
-		code = code[:1000] + "...\n"
+	if len(code) > 500 {
+		code = code[:500] + "...\n"
 	}
 
 	// More syntax files: https://github.com/zyedidia/highlight
@@ -466,7 +470,7 @@ func extractLanguageNames(langs Languages) []string {
 	return listLangs
 }
 
-func uploadCode(id, language, file string) {
+func uploadCode(id, language, file, contest_id string) {
 	codeFile, err := os.Open(file)
 	if err != nil {
 		logError(fmt.Errorf("failed to open code file %s: %w", file, err))
@@ -476,7 +480,6 @@ func uploadCode(id, language, file string) {
 
 	var requestBody bytes.Buffer
 	writer := multipart.NewWriter(&requestBody)
-	defer writer.Close()
 
 	if err := writeFormFields(writer, id, language); err != nil {
 		logError(err)
@@ -488,7 +491,18 @@ func uploadCode(id, language, file string) {
 		return
 	}
 
+	if contest_id != "NO" {
+		if err := writeFormContest(writer, contest_id); err != nil {
+			logError(err)
+			return
+		}
+	}
+
 	contentType := writer.FormDataContentType()
+
+	if err := writer.Close(); err != nil {
+		logError(fmt.Errorf("failed to close writer: %w", err))
+	}
 
 	body, err := MakePostRequest(URL_SUBMIT, &requestBody, RequestMultipartForm, contentType)
 	if err != nil {
@@ -512,6 +526,13 @@ func writeFormFields(writer *multipart.Writer, id, language string) error {
 	}
 	if err := writer.WriteField("language", language); err != nil {
 		return fmt.Errorf("failed to write language field: %w", err)
+	}
+	return nil
+}
+
+func writeFormContest(writer *multipart.Writer, id string) error {
+	if err := writer.WriteField("contest_id", id); err != nil {
+		return fmt.Errorf("failed to write contest_id field: %w", err)
 	}
 	return nil
 }

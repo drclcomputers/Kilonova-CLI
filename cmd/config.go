@@ -56,6 +56,7 @@ const (
 	URL_CONTEST_ASK_QUESTION        = API_URL + "contest/%s/askQuestion"
 	URL_CONTEST_ALL_QUESTIONS       = API_URL + "contest/%s/allQuestions"
 	URL_CONTEST_UPDATE_PROBLEMS     = API_URL + "contest/%s/update/problems"
+	URL_CONTEST_PROBLEMS            = API_URL + "contest/%s/problems"
 	STAT_FILENAME_RO                = "statement-ro.md"
 	STAT_FILENAME_EN                = "statement-en.md"
 	URL_STATEMENT                   = API_URL + "problem/%s/get/attachmentByName/%s"
@@ -350,11 +351,11 @@ func MakeRequest(method, url string, body io.Reader, reqType RequestType, conten
 }
 
 func MakeGetRequest(url string, body io.Reader, reqType RequestType, contentType ...string) ([]byte, error) {
-	return MakeRequest("GET", url, body, reqType)
+	return MakeRequest("GET", url, body, reqType, contentType...)
 }
 
 func MakePostRequest(url string, body io.Reader, reqType RequestType, contentType ...string) ([]byte, error) {
-	return MakeRequest("POST", url, body, reqType)
+	return MakeRequest("POST", url, body, reqType, contentType...)
 }
 
 func PostJSON[T any](url string, payload any) (T, error) {

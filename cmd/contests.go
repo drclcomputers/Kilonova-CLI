@@ -124,6 +124,15 @@ var updateProblemsContestCmd = &cobra.Command{
 	},
 }
 
+var showProblemsContestCmd = &cobra.Command{
+	Use:   "problems [ID]",
+	Short: "Show problems in the contest.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		showProblems(args[0])
+	},
+}
+
 func init() {
 	ContestCmd.AddCommand(createContestCmd)
 	ContestCmd.AddCommand(deleteContestCmd)
@@ -136,6 +145,7 @@ func init() {
 	ContestCmd.AddCommand(updateAnnouncementContestCmd)
 	ContestCmd.AddCommand(deleteAnnouncementContestCmd)
 	ContestCmd.AddCommand(updateProblemsContestCmd)
+	ContestCmd.AddCommand(showProblemsContestCmd)
 
 	rootCmd.AddCommand(ContestCmd)
 }
@@ -143,9 +153,11 @@ func init() {
 type contestdata struct {
 	Status string `json:"status"`
 	Data   []struct {
-		Text string `json:"text"`
-		Time string `json:"created_at"`
-		ID   int    `json:"id"`
+		Text     string `json:"text"`
+		Time     string `json:"created_at"`
+		ID       int    `json:"id"`
+		Name     string `json:"name"`
+		MaxScore int    `json:"max_score"`
 	}
 }
 
@@ -473,4 +485,59 @@ func viewAllQuestionsContest(contest_id string) {
 			logError(fmt.Errorf("error running program: %w", err))
 		}
 	}
+}
+
+func showProblems(contest_id string) {
+	url := fmt.Sprintf(URL_CONTEST_PROBLEMS, contest_id)
+	body, err := MakeGetRequest(url, nil, RequestNone)
+
+	if err != nil {
+		logError(err)
+	}
+	var data contestdata
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	ok := false
+
+	var rows []table.Row
+
+	if data.Status != "success" {
+		logError(fmt.Errorf("couldn't retrieve contest problems"))
+	} else {
+		for _, pb := range data.Data {
+			ok = true
+			rows = append(rows, table.Row{
+				fmt.Sprintf("%d", pb.ID),
+				pb.Name,
+				fmt.Sprintf("%d", pb.MaxScore),
+			})
+		}
+	}
+
+	if !ok {
+		fmt.Println("No problems have been added!")
+	} else {
+		columns := []table.Column{
+			{Title: "ID", Width: 5},
+			{Title: "Name", Width: 30},
+			{Title: "Max Score", Width: 10},
+		}
+
+		t := table.New(
+			table.WithColumns(columns),
+			table.WithRows(rows),
+			table.WithFocused(true),
+			table.WithHeight(20),
+		)
+
+		t.SetStyles(table.DefaultStyles())
+
+		p := tea.NewProgram(&Model{table: t}, tea.WithAltScreen())
+		if _, err := p.Run(); err != nil {
+			logError(fmt.Errorf("error running program: %w", err))
+		}
+	}
+
 }
