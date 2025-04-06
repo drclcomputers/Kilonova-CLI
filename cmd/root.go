@@ -13,7 +13,7 @@ import (
 
 var rootCmd = &cobra.Command{
 	Use:     "kilocli",
-	Version: "v0.1.8",
+	Version: "v0.2.1",
 	Short:   "A CLI client for the competitive programming platform Kilonova ",
 	Long: `Kilonova-CLI is a command-line interface (CLI) client designed for interacting 
 with the Kilonova competitive programming platform. It enables users to view statements, 
