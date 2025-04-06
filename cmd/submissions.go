@@ -350,7 +350,7 @@ func formatCodeOutput(code string, lang string) string {
 	// More syntax files: https://github.com/zyedidia/highlight
 	syntaxFile, err := highlightDir.ReadFile("highlight/" + lang + ".yaml")
 	if err != nil {
-		logError(fmt.Errorf("No syntax file for lang (%w)", err))
+		logError(fmt.Errorf("no syntax file for lang (%w)", err))
 	}
 
 	syntaxDef, err := highlight.ParseDef(syntaxFile)

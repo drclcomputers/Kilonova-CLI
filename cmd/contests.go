@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	u "net/url"
+	"strconv"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -111,6 +112,18 @@ var deleteAnnouncementContestCmd = &cobra.Command{
 	},
 }
 
+var updateProblemsContestCmd = &cobra.Command{
+	Use:   "update [pb_1] [pb_2] ... [pb_n]",
+	Short: "Update the problems in your contest.",
+	Args:  cobra.MinimumNArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		contestID := args[0]
+		problemIDs := args[1:]
+
+		updateProblems(contestID, problemIDs)
+	},
+}
+
 func init() {
 	ContestCmd.AddCommand(createContestCmd)
 	ContestCmd.AddCommand(deleteContestCmd)
@@ -122,6 +135,7 @@ func init() {
 	ContestCmd.AddCommand(createAnnouncementContestCmd)
 	ContestCmd.AddCommand(updateAnnouncementContestCmd)
 	ContestCmd.AddCommand(deleteAnnouncementContestCmd)
+	ContestCmd.AddCommand(updateProblemsContestCmd)
 
 	rootCmd.AddCommand(ContestCmd)
 }
@@ -297,6 +311,45 @@ func askQuestion(contest_id, text string) {
 
 	if data.Status != "success" {
 		fmt.Println("Failed to ask question!")
+	} else {
+		fmt.Println(string(data.Data))
+	}
+}
+
+func updateProblems(contest_id string, problems_id []string) {
+	url := fmt.Sprintf(URL_CONTEST_UPDATE_PROBLEMS, contest_id)
+
+	var problems_id_int []int
+	for _, s := range problems_id {
+		num, err := strconv.Atoi(s)
+		if err != nil {
+			logError(err)
+		}
+		problems_id_int = append(problems_id_int, num)
+	}
+
+	payload := map[string]interface{}{
+		"list": problems_id_int,
+	}
+
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		logError(err)
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBuffer(jsonBytes), RequestJSON)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		logError(fmt.Errorf("failed to decode response: %w", err))
+	}
+
+	if data.Status != "success" {
+		fmt.Println("Failed to update problems!")
 	} else {
 		fmt.Println(string(data.Data))
 	}
