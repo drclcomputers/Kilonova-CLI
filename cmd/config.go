@@ -24,35 +24,46 @@ import (
 )
 
 const (
-	API_URL                        = "https://kilonova.ro/api/"
-	URL_LOGIN                      = API_URL + "auth/login"
-	URL_LOGOUT                     = API_URL + "auth/logout"
-	URL_EXTEND_SESSION             = API_URL + "auth/extendSession"
-	URL_SEARCH                     = API_URL + "problem/search"
-	URL_PROBLEM                    = API_URL + "problem/%s/"
-	URL_SELF                       = API_URL + "user/self/"
-	URL_SELF_PROBLEMS              = API_URL + "user/self/solvedProblems"
-	URL_SELF_SET_BIO               = API_URL + "user/self/setBio"
-	URL_CHANGE_EMAIL               = API_URL + "user/changeEmail"
-	URL_CHANGE_PASS                = API_URL + "user/changePassword"
-	URL_CHANGE_NAME                = API_URL + "user/updateName"
-	URL_USER                       = API_URL + "user/byID/%s"
-	URL_USER_PROBLEMS              = API_URL + "user/byID/%s/solvedProblems"
-	URL_LANGS_PB                   = API_URL + "problem/%s/languages"
-	URL_SUBMIT                     = API_URL + "submissions/submit"
-	URL_LATEST_SUBMISSION          = API_URL + "submissions/getByID?id=%d"
-	URL_SUBMISSION_LIST            = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
-	URL_SUBMISSION_LIST_NO_FILTER  = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
-	URL_SUBMISSION_LIST_NO_PROBLEM = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
-	URL_SUBMISSION_LIST_NO_USER    = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s"
-	STAT_FILENAME_RO               = "statement-ro.md"
-	STAT_FILENAME_EN               = "statement-en.md"
-	URL_STATEMENT                  = API_URL + "problem/%s/get/attachmentByName/%s"
-	URL_ASSETS                     = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
-	URL_RESEND_MAIL                = API_URL + "user/resendEmail"
-	URL_DELETE_USER                = API_URL + "user/moderation/deleteUser"
-	userAgent                      = "KilonovaCLIClient/0.1"
-	XMLCBPStruct                   = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
+	API_URL                         = "https://kilonova.ro/api/"
+	URL_LOGIN                       = API_URL + "auth/login"
+	URL_LOGOUT                      = API_URL + "auth/logout"
+	URL_EXTEND_SESSION              = API_URL + "auth/extendSession"
+	URL_SEARCH                      = API_URL + "problem/search"
+	URL_PROBLEM                     = API_URL + "problem/%s/"
+	URL_SELF                        = API_URL + "user/self/"
+	URL_SELF_PROBLEMS               = API_URL + "user/self/solvedProblems"
+	URL_SELF_SET_BIO                = API_URL + "user/self/setBio"
+	URL_CHANGE_EMAIL                = API_URL + "user/changeEmail"
+	URL_CHANGE_PASS                 = API_URL + "user/changePassword"
+	URL_CHANGE_NAME                 = API_URL + "user/updateName"
+	URL_USER                        = API_URL + "user/byID/%s"
+	URL_USER_PROBLEMS               = API_URL + "user/byID/%s/solvedProblems"
+	URL_LANGS_PB                    = API_URL + "problem/%s/languages"
+	URL_SUBMIT                      = API_URL + "submissions/submit"
+	URL_LATEST_SUBMISSION           = API_URL + "submissions/getByID?id=%d"
+	URL_SUBMISSION_LIST             = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
+	URL_SUBMISSION_LIST_NO_FILTER   = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
+	URL_SUBMISSION_LIST_NO_PROBLEM  = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
+	URL_SUBMISSION_LIST_NO_USER     = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s"
+	URL_CONTEST_CREATE              = API_URL + "contest/create"
+	URL_CONTEST_DELETE              = API_URL + "contest/%s/delete"
+	URL_CONTEST_REGISTER            = API_URL + "contest/%s/register"
+	URL_CONTEST_START               = API_URL + "contest/%s/startRegistration"
+	URL_CONTEST_ANNOUNCEMENTS       = API_URL + "contest/%s/announcements"
+	URL_CONTEST_CREATE_ANNOUNCEMENT = API_URL + "contest/%s/createAnnouncement"
+	URL_CONTEST_UPDATE_ANNOUNCEMENT = API_URL + "contest/%s/updateAnnouncement"
+	URL_CONTEST_DELETE_ANNOUNCEMENT = API_URL + "contest/%s/deleteAnnouncement"
+	URL_CONTEST_ASK_QUESTION        = API_URL + "contest/%s/askQuestion"
+	URL_CONTEST_ALL_QUESTIONS       = API_URL + "contest/%s/allQuestions"
+	URL_CONTEST_UPDATE_PROBLEMS     = API_URL + "contest/%s/update/problems"
+	STAT_FILENAME_RO                = "statement-ro.md"
+	STAT_FILENAME_EN                = "statement-en.md"
+	URL_STATEMENT                   = API_URL + "problem/%s/get/attachmentByName/%s"
+	URL_ASSETS                      = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
+	URL_RESEND_MAIL                 = API_URL + "user/resendEmail"
+	URL_DELETE_USER                 = API_URL + "user/moderation/deleteUser"
+	userAgent                       = "KilonovaCLIClient/0.2"
+	XMLCBPStruct                    = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_project_file>
 	<FileVersion major="1" minor="6" />
 	<Project>
@@ -264,7 +275,6 @@ func readToken() (string, bool) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		logError(fmt.Errorf("failed to get user home directory: %w", err))
-		return "", false
 	}
 
 	tokenPath := filepath.Join(homedir, ".config", "kn-cli", "token")
