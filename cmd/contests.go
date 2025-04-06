@@ -11,6 +11,7 @@ import (
 	"fmt"
 	u "net/url"
 	"strconv"
+	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
@@ -151,7 +152,74 @@ var showProblemsContestCmd = &cobra.Command{
 	},
 }
 
-/*
+var showInfoContestCmd = &cobra.Command{
+	Use:   "info [ID]",
+	Short: "Show a brief description of the contest.",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		infoContest(args[0], "1")
+	},
+}
+
+var modifyInfoContestCmd = &cobra.Command{
+	Use:   "modifyify [command]",
+	Short: "Modify contest.",
+}
+
+var modifyStartTimeContestCmd = &cobra.Command{
+	Use:   "start [ID] [time formatted like (2006-08-09 12:30:00)]",
+	Short: "Modify contest starting time.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		modStartTimeContest(args[0], args[1])
+	},
+}
+
+var modifyEndTimeContestCmd = &cobra.Command{
+	Use:   "end [ID] [time formatted like (2006-08-09 12:30:00)]",
+	Short: "Modify contest ending time.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		modEndTimeContest(args[0], args[1])
+	},
+}
+
+var modifyMaxSubsContestCmd = &cobra.Command{
+	Use:   "maxsubs [ID] [nr]",
+	Short: "Modify contest max submissions per problem.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		modMaxSubsContest(args[0], args[1])
+	},
+}
+
+var modifyVisibleContestCmd = &cobra.Command{
+	Use:   "visible [ID] [true or false]",
+	Short: "Modify contest visibility.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		modVisibleContest(args[0], args[1])
+	},
+}
+
+var modifyRegisterDuringContestCmd = &cobra.Command{
+	Use:   "registduring [ID] [true or false]",
+	Short: "Modify registering during contest.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		modRegisterDuringContest(args[0], args[1])
+	},
+}
+
+var modifyPublicLeaderboardContestCmd = &cobra.Command{
+	Use:   "publicleader [ID] [true or false]",
+	Short: "Modify leaderboard visibily to the public.",
+	Args:  cobra.ExactArgs(2),
+	Run: func(cmd *cobra.Command, args []string) {
+		modPublicLeaderboardContest(args[0], args[1])
+	},
+}
+
 var leaderboardContestCmd = &cobra.Command{
 	Use:   "leaderboard [ID]",
 	Short: "Show contest leaderboard.",
@@ -159,7 +227,7 @@ var leaderboardContestCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		leaderboard(args[0])
 	},
-}*/
+}
 
 func init() {
 	ContestCmd.AddCommand(createContestCmd)
@@ -176,7 +244,16 @@ func init() {
 	ContestCmd.AddCommand(deleteAnnouncementContestCmd)
 	ContestCmd.AddCommand(updateProblemsContestCmd)
 	ContestCmd.AddCommand(showProblemsContestCmd)
-	//ContestCmd.AddCommand(leaderboardContestCmd)
+	ContestCmd.AddCommand(showInfoContestCmd)
+	ContestCmd.AddCommand(modifyInfoContestCmd)
+	ContestCmd.AddCommand(leaderboardContestCmd)
+
+	modifyInfoContestCmd.AddCommand(modifyStartTimeContestCmd)
+	modifyInfoContestCmd.AddCommand(modifyEndTimeContestCmd)
+	modifyInfoContestCmd.AddCommand(modifyMaxSubsContestCmd)
+	modifyInfoContestCmd.AddCommand(modifyVisibleContestCmd)
+	modifyInfoContestCmd.AddCommand(modifyRegisterDuringContestCmd)
+	modifyInfoContestCmd.AddCommand(modifyPublicLeaderboardContestCmd)
 
 	rootCmd.AddCommand(ContestCmd)
 }
@@ -192,6 +269,27 @@ type contestdata struct {
 	}
 }
 
+type contestinfo struct {
+	Status string `json:"status"`
+	Data   struct {
+		StartTime             string      `json:"start_time"`
+		EndTime               string      `json:"end_time"`
+		MaxSubs               int         `json:"max_subs"`
+		Name                  string      `json:"name"`
+		Visible               bool        `json:"visible"`
+		PublicLeaderboard     bool        `json:"public_leaderboard"`
+		ChangeLeadboardFreeze bool        `json:"change_leaderboard_freeze"`
+		IcpcSubmPenalty       json.Number `json:"icpc_submission_penalty"`
+		LeadAdvFilter         bool        `json:"leaderboard_advanced_filter"`
+		LeadStyle             string      `json:"leaderboard_style"`
+		PerUserTime           json.Number `json:"per_user_time"`
+		PublicJoin            bool        `json:"public_join"`
+		QuestionCoolDown      json.Number `json:"question_contest"`
+		RegisterDuringContest bool        `json:"register_during_contest"`
+		SubmissionCooldown    json.Number `json:"submission_cooldown"`
+	}
+}
+
 type contestquestions struct {
 	Status string `json:"status"`
 	Data   []struct {
@@ -202,6 +300,21 @@ type contestquestions struct {
 		Id            int    `json:"id"`
 		AuthorID      int    `json:"author_id"`
 	}
+}
+
+type leaderboarddata struct {
+	Status string `json:"status"`
+	Data   struct {
+		ProblemNames map[string]string `json:"problem_names"`
+		Entries      []struct {
+			User struct {
+				ID   int    `json:"id"`
+				Name string `json:"name"`
+			} `json:"user"`
+			Scores map[string]int `json:"scores"`
+			Total  int            `json:"total"`
+		} `json:"entries"`
+	} `json:"data"`
 }
 
 // contest
@@ -258,6 +371,7 @@ func deleteContest(contest_id string) {
 
 // manage contest
 
+// communication
 func createAnnouncement(contest_id, text string) {
 	url := fmt.Sprintf(URL_CONTEST_CREATE_ANNOUNCEMENT, contest_id)
 
@@ -385,45 +499,6 @@ func answerQuestion(contest_id, question_id, text string) {
 	}
 }
 
-func updateProblems(contest_id string, problems_id []string) {
-	url := fmt.Sprintf(URL_CONTEST_UPDATE_PROBLEMS, contest_id)
-
-	var problems_id_int []int
-	for _, s := range problems_id {
-		num, err := strconv.Atoi(s)
-		if err != nil {
-			logError(err)
-		}
-		problems_id_int = append(problems_id_int, num)
-	}
-
-	payload := map[string]interface{}{
-		"list": problems_id_int,
-	}
-
-	jsonBytes, err := json.Marshal(payload)
-	if err != nil {
-		logError(err)
-	}
-
-	body, err := MakePostRequest(url, bytes.NewBuffer(jsonBytes), RequestJSON)
-	if err != nil {
-		logError(err)
-	}
-
-	var data KilonovaResponse
-	err = json.Unmarshal(body, &data)
-	if err != nil {
-		logError(fmt.Errorf("failed to decode response: %w", err))
-	}
-
-	if data.Status != "success" {
-		fmt.Println("Failed to update problems!")
-	} else {
-		fmt.Println(string(data.Data))
-	}
-}
-
 func viewAnnouncementsContest(contest_id string) {
 	url := fmt.Sprintf(URL_CONTEST_ANNOUNCEMENTS, contest_id)
 	body, err := MakeGetRequest(url, nil, RequestNone)
@@ -544,6 +619,47 @@ func viewAllQuestionsContest(contest_id string) {
 	}
 }
 
+// manage
+
+func updateProblems(contest_id string, problems_id []string) {
+	url := fmt.Sprintf(URL_CONTEST_UPDATE_PROBLEMS, contest_id)
+
+	var problems_id_int []int
+	for _, s := range problems_id {
+		num, err := strconv.Atoi(s)
+		if err != nil {
+			logError(err)
+		}
+		problems_id_int = append(problems_id_int, num)
+	}
+
+	payload := map[string]interface{}{
+		"list": problems_id_int,
+	}
+
+	jsonBytes, err := json.Marshal(payload)
+	if err != nil {
+		logError(err)
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBuffer(jsonBytes), RequestJSON)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	err = json.Unmarshal(body, &data)
+	if err != nil {
+		logError(fmt.Errorf("failed to decode response: %w", err))
+	}
+
+	if data.Status != "success" {
+		fmt.Println("Failed to update problems!")
+	} else {
+		fmt.Println(string(data.Data))
+	}
+}
+
 func viewMyQuestionsContest(contest_id string) {
 	url := fmt.Sprintf(URL_CONTEST_YOUR_QUESTIONS, contest_id)
 	body, err := MakeGetRequest(url, nil, RequestNone)
@@ -660,9 +776,176 @@ func showProblems(contest_id string) {
 
 }
 
-/*func leaderboard(contest_id string) {
-url := fmt.Sprintf(URL_CONTEST_ALL_QUESTIONS, contest_id)
-body, err := MakeGetRequest(url, nil, RequestNone)
-if err != nil {
-	logError(err)
-}}*/
+func infoContest(contest_id, use_case string) contestinfo {
+	url := fmt.Sprintf(URL_CONTEST, contest_id)
+	body, err := MakeGetRequest(url, nil, RequestInfo)
+
+	if err != nil {
+		logError(err)
+	}
+	var data contestinfo
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+	if use_case != "2" {
+		parsedtime1, err := parseSubmissionTime(data.Data.StartTime)
+		if err != nil {
+			logError(err)
+		}
+		parsedtime2, err := parseSubmissionTime(data.Data.EndTime)
+		if err != nil {
+			logError(err)
+		}
+		fmt.Printf("Name: %s\nStart time: %s\nEnd time: %s\nMax submissions per pb: %d\n", data.Data.Name, parsedtime1, parsedtime2, data.Data.MaxSubs)
+	}
+	return data
+}
+
+func modStartTimeContest(contest_id, start_time string) {
+	layout := "2006-01-02 15:04:05"
+	parsedTime, err := time.Parse(layout, start_time)
+	if err != nil {
+		logError(err)
+	}
+	NewTime := parsedTime.UTC().Format(time.RFC3339Nano)
+
+	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
+
+	formData := u.Values{
+		"start_time": {NewTime},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Printf("Make sure you took into account times zones.\n%s\n", data.Data)
+
+}
+
+func modEndTimeContest(contest_id, end_time string) {
+	layout := "2006-01-02 15:04:05"
+	parsedTime, err := time.Parse(layout, end_time)
+	if err != nil {
+		logError(err)
+	}
+	NewTime := parsedTime.UTC().Format(time.RFC3339Nano)
+
+	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
+
+	formData := u.Values{
+		"end_time": {NewTime},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Printf("Make sure you took into account times zones.\n%s\n", data.Data)
+}
+
+func modMaxSubsContest(contest_id, maxsubs string) {
+	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
+
+	formData := u.Values{
+		"max_subs": {maxsubs},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Println(data.Data)
+}
+
+func modVisibleContest(contest_id, visible string) {
+	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
+
+	formData := u.Values{
+		"visible": {visible},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Println(data.Data)
+}
+
+func modRegisterDuringContest(contest_id, registduringcont string) {
+	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
+
+	formData := u.Values{
+		"register_during_contest": {registduringcont},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Println(data.Data)
+}
+
+func modPublicLeaderboardContest(contest_id, publicleader string) {
+	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
+
+	formData := u.Values{
+		"public_leaderboard": {publicleader},
+	}
+
+	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	if err != nil {
+		logError(err)
+	}
+
+	var data KilonovaResponse
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Println(data.Data)
+}
+
+func leaderboard(contest_id string) {
+	url := fmt.Sprintf(URL_CONTEST_LEADERBOARD, contest_id)
+	body, err := MakeGetRequest(url, nil, RequestNone)
+	if err != nil {
+		logError(err)
+	}
+	var data leaderboarddata
+	if err = json.Unmarshal(body, &data); err != nil {
+		logError(err)
+	}
+
+	fmt.Println(data)
+}

@@ -45,6 +45,8 @@ const (
 	URL_SUBMISSION_LIST_NO_FILTER   = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
 	URL_SUBMISSION_LIST_NO_PROBLEM  = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
 	URL_SUBMISSION_LIST_NO_USER     = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s"
+	URL_CONTEST                     = API_URL + "contest/%s"
+	URL_CONTEST_UPDATE              = API_URL + "contest/%s/update"
 	URL_CONTEST_CREATE              = API_URL + "contest/create"
 	URL_CONTEST_DELETE              = API_URL + "contest/%s/delete"
 	URL_CONTEST_REGISTER            = API_URL + "contest/%s/register"
@@ -175,7 +177,8 @@ const (
 	RequestJSON                      // 2
 	RequestFormGuest                 // 3
 	RequestDownloadZip               // 4
-	RequestMultipartForm             // 5
+	RequestInfo                      // 5
+	RequestMultipartForm             // 6
 )
 
 // TEXT MODEL
@@ -308,10 +311,12 @@ func MakeRequest(method, url string, body io.Reader, reqType RequestType, conten
 		req.Header.Set("Content-Type", "application/x-www-form-urlencoded")
 	case RequestJSON:
 		req.Header.Set("Content-Type", "application/json")
-	case RequestDownloadZip:
+	case RequestDownloadZip, RequestInfo:
 		req.Header.Set("Content-Type", "application/zip")
 		req.Header.Set("Accept", "application/zip")
-		fmt.Println("Trying to obtain archive...")
+		if reqType == RequestDownloadZip {
+			fmt.Println("Trying to obtain archive...")
+		}
 		cookie := &http.Cookie{
 			Name:  "kn-sessionid",
 			Value: token,
