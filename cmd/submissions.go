@@ -7,6 +7,7 @@ package cmd
 
 import (
 	"bytes"
+	"embed"
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -27,6 +28,9 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/zyedidia/highlight"
 )
+
+//go:embed highlight/*.yaml
+var highlightDir embed.FS
 
 var download bool = false
 
@@ -344,7 +348,7 @@ func formatCodeOutput(code string, lang string) string {
 	}
 
 	// More syntax files: https://github.com/zyedidia/highlight
-	syntaxFile, err := os.ReadFile("highlight/" + lang + ".yaml")
+	syntaxFile, err := highlightDir.ReadFile("highlight/" + lang + ".yaml")
 	if err != nil {
 		logError(fmt.Errorf("No syntax file for lang (%w)", err))
 	}
