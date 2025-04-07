@@ -10,13 +10,18 @@ import (
 	"encoding/json"
 	"fmt"
 	u "net/url"
+	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
 	"github.com/charmbracelet/bubbles/table"
 	tea "github.com/charmbracelet/bubbletea"
+	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
+
+var Download bool = false
 
 var ContestCmd = &cobra.Command{
 	Use:   "contest [command] ...",
@@ -162,8 +167,8 @@ var showInfoContestCmd = &cobra.Command{
 }
 
 var modifyInfoContestCmd = &cobra.Command{
-	Use:   "modifyify [command]",
-	Short: "Modify contest.",
+	Use:   "settings [command]",
+	Short: "Adjust contest settings.",
 }
 
 var modifyStartTimeContestCmd = &cobra.Command{
@@ -171,7 +176,14 @@ var modifyStartTimeContestCmd = &cobra.Command{
 	Short: "Modify contest starting time.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		modStartTimeContest(args[0], args[1])
+		layout := "2006-01-02 15:04:05"
+		parsedTime, err := time.Parse(layout, args[1])
+		if err != nil {
+			logError(err)
+		}
+		NewTime := parsedTime.UTC().Format(time.RFC3339Nano)
+
+		modifyGeneralContest(args[0], "start_time", NewTime)
 	},
 }
 
@@ -180,7 +192,14 @@ var modifyEndTimeContestCmd = &cobra.Command{
 	Short: "Modify contest ending time.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		modEndTimeContest(args[0], args[1])
+		layout := "2006-01-02 15:04:05"
+		parsedTime, err := time.Parse(layout, args[1])
+		if err != nil {
+			logError(err)
+		}
+		NewTime := parsedTime.UTC().Format(time.RFC3339Nano)
+
+		modifyGeneralContest(args[0], "end_time", NewTime)
 	},
 }
 
@@ -189,7 +208,11 @@ var modifyMaxSubsContestCmd = &cobra.Command{
 	Short: "Modify contest max submissions per problem.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		modMaxSubsContest(args[0], args[1])
+		_, err := strconv.Atoi(args[1])
+		if err != nil {
+			logError(err)
+		}
+		modifyGeneralContest(args[0], "max_subs", args[1])
 	},
 }
 
@@ -198,7 +221,10 @@ var modifyVisibleContestCmd = &cobra.Command{
 	Short: "Modify contest visibility.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		modVisibleContest(args[0], args[1])
+		if args[1] != "true" && args[1] != "false" {
+			logError(fmt.Errorf("error: visibility must be either true or false"))
+		}
+		modifyGeneralContest(args[0], "visible", args[1])
 	},
 }
 
@@ -207,7 +233,10 @@ var modifyRegisterDuringContestCmd = &cobra.Command{
 	Short: "Modify registering during contest.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		modRegisterDuringContest(args[0], args[1])
+		if args[1] != "true" && args[1] != "false" {
+			logError(fmt.Errorf("error: registering during contest must be either true or false"))
+		}
+		modifyGeneralContest(args[0], "register_during_contest", args[1])
 	},
 }
 
@@ -216,7 +245,10 @@ var modifyPublicLeaderboardContestCmd = &cobra.Command{
 	Short: "Modify leaderboard visibily to the public.",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
-		modPublicLeaderboardContest(args[0], args[1])
+		if args[1] != "true" && args[1] != "false" {
+			logError(fmt.Errorf("error: public leaderboard must be either true or false"))
+		}
+		modifyGeneralContest(args[0], "public_leaderboard", args[1])
 	},
 }
 
@@ -247,6 +279,7 @@ func init() {
 	ContestCmd.AddCommand(showInfoContestCmd)
 	ContestCmd.AddCommand(modifyInfoContestCmd)
 	ContestCmd.AddCommand(leaderboardContestCmd)
+	leaderboardContestCmd.Flags().BoolVarP(&Download, "download_leader", "d", false, "Download leaderboard as a CSV file.")
 
 	modifyInfoContestCmd.AddCommand(modifyStartTimeContestCmd)
 	modifyInfoContestCmd.AddCommand(modifyEndTimeContestCmd)
@@ -397,12 +430,12 @@ func createAnnouncement(contest_id, text string) {
 	}
 }
 
-func updateAnnouncement(contest_id, announ_id, text string) {
+func updateAnnouncement(contest_id, announcement_id, text string) {
 	url := fmt.Sprintf(URL_CONTEST_UPDATE_ANNOUNCEMENT, contest_id)
 
 	formData := u.Values{
 		"text": {text},
-		"id":   {announ_id},
+		"id":   {announcement_id},
 	}
 
 	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
@@ -796,71 +829,19 @@ func infoContest(contest_id, use_case string) contestinfo {
 		if err != nil {
 			logError(err)
 		}
-		fmt.Printf("Name: %s\nStart time: %s\nEnd time: %s\nMax submissions per pb: %d\n", data.Data.Name, parsedtime1, parsedtime2, data.Data.MaxSubs)
+		fmt.Printf("Name: %s\nStart time: %s\nEnd time: %s\nMax submissions per pb: %d\n",
+			data.Data.Name, parsedtime1, parsedtime2, data.Data.MaxSubs)
+		fmt.Printf("Public leaderboard: %t\nVisibility: %t\nRegistering during contest: %t\n",
+			data.Data.PublicLeaderboard, data.Data.Visible, data.Data.RegisterDuringContest)
 	}
 	return data
 }
 
-func modStartTimeContest(contest_id, start_time string) {
-	layout := "2006-01-02 15:04:05"
-	parsedTime, err := time.Parse(layout, start_time)
-	if err != nil {
-		logError(err)
-	}
-	NewTime := parsedTime.UTC().Format(time.RFC3339Nano)
-
+func modifyGeneralContest(contest_id, datform, publicleader string) {
 	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
 
 	formData := u.Values{
-		"start_time": {NewTime},
-	}
-
-	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
-	if err != nil {
-		logError(err)
-	}
-
-	var data KilonovaResponse
-	if err = json.Unmarshal(body, &data); err != nil {
-		logError(err)
-	}
-
-	fmt.Printf("Make sure you took into account times zones.\n%s\n", data.Data)
-
-}
-
-func modEndTimeContest(contest_id, end_time string) {
-	layout := "2006-01-02 15:04:05"
-	parsedTime, err := time.Parse(layout, end_time)
-	if err != nil {
-		logError(err)
-	}
-	NewTime := parsedTime.UTC().Format(time.RFC3339Nano)
-
-	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
-
-	formData := u.Values{
-		"end_time": {NewTime},
-	}
-
-	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
-	if err != nil {
-		logError(err)
-	}
-
-	var data KilonovaResponse
-	if err = json.Unmarshal(body, &data); err != nil {
-		logError(err)
-	}
-
-	fmt.Printf("Make sure you took into account times zones.\n%s\n", data.Data)
-}
-
-func modMaxSubsContest(contest_id, maxsubs string) {
-	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
-
-	formData := u.Values{
-		"max_subs": {maxsubs},
+		datform: {publicleader},
 	}
 
 	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
@@ -876,64 +857,32 @@ func modMaxSubsContest(contest_id, maxsubs string) {
 	fmt.Println(data.Data)
 }
 
-func modVisibleContest(contest_id, visible string) {
-	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
-
-	formData := u.Values{
-		"visible": {visible},
-	}
-
-	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+func downloadLeaderboard(contest_id string) {
+	resp, err := MakeGetRequest(fmt.Sprintf(URL_CONTEST_ASSETS, contest_id), nil, RequestDownloadZip)
 	if err != nil {
 		logError(err)
 	}
 
-	var data KilonovaResponse
-	if err = json.Unmarshal(body, &data); err != nil {
-		logError(err)
-	}
-
-	fmt.Println(data.Data)
-}
-
-func modRegisterDuringContest(contest_id, registduringcont string) {
-	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
-
-	formData := u.Values{
-		"register_during_contest": {registduringcont},
-	}
-
-	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	homedir, err := os.Getwd()
 	if err != nil {
-		logError(err)
+		logError(fmt.Errorf("failed to get current working directory: %w", err))
+		return
 	}
 
-	var data KilonovaResponse
-	if err = json.Unmarshal(body, &data); err != nil {
-		logError(err)
-	}
-
-	fmt.Println(data.Data)
-}
-
-func modPublicLeaderboardContest(contest_id, publicleader string) {
-	url := fmt.Sprintf(URL_CONTEST_UPDATE, contest_id)
-
-	formData := u.Values{
-		"public_leaderboard": {publicleader},
-	}
-
-	body, err := MakePostRequest(url, bytes.NewBufferString(formData.Encode()), RequestFormAuth)
+	downFile := filepath.Join(homedir, "leaderboard_"+contest_id+".csv")
+	outFile, err := os.Create(downFile)
 	if err != nil {
-		logError(err)
+		logError(fmt.Errorf("failed to create file %q: %w", downFile, err))
+		return
+	}
+	defer outFile.Close()
+
+	if err := os.WriteFile(downFile, resp, 0644); err != nil {
+		logError(fmt.Errorf("failed to write to file %q: %w", downFile, err))
+		return
 	}
 
-	var data KilonovaResponse
-	if err = json.Unmarshal(body, &data); err != nil {
-		logError(err)
-	}
-
-	fmt.Println(data.Data)
+	fmt.Printf("Leaderboard to contest #%s saved to %q\n", contest_id, downFile)
 }
 
 func leaderboard(contest_id string) {
@@ -947,5 +896,51 @@ func leaderboard(contest_id string) {
 		logError(err)
 	}
 
-	fmt.Println(data)
+	var rows []table.Row
+
+	for _, entry := range data.Data.Entries {
+		var scores string
+		for _, score := range entry.Scores {
+			scores += fmt.Sprintf("%d  ", score)
+		}
+		rows = append(rows, table.Row{
+			fmt.Sprintf("%d   %s ", entry.User.ID, entry.User.Name),
+			scores,
+			fmt.Sprintf("%d", entry.Total),
+		})
+	}
+
+	var problemNamesTitle string
+	for id, name := range data.Data.ProblemNames {
+		problemNamesTitle += "| #" + id + " " + name + " "
+	}
+
+	problemNamesTitle += "|"
+
+	columns := []table.Column{
+		{Title: "ID | Name", Width: 25},
+		{Title: problemNamesTitle, Width: 50},
+		{Title: "Total", Width: 5},
+	}
+
+	t := table.New(
+		table.WithColumns(columns),
+		table.WithRows(rows),
+		table.WithFocused(true),
+		table.WithHeight(20),
+	)
+
+	t.SetStyles(table.DefaultStyles())
+
+	p := tea.NewProgram(&Model{table: t}, tea.WithAltScreen())
+	if _, err := p.Run(); err != nil {
+		logError(fmt.Errorf("error running program: %w", err))
+	}
+
+	if Download {
+		action := func() { downloadLeaderboard(contest_id) }
+		if err := spinner.New().Title("Waiting for download...").Action(action).Run(); err != nil {
+			logError(fmt.Errorf("error during source code download for submission #%s: %w", contest_id, err))
+		}
+	}
 }

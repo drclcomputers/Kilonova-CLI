@@ -287,7 +287,7 @@ func printDetailsSubmission(submissionId string) {
 
 	printSubmissionDetails(details, formattedTime, code)
 
-	if download {
+	if Download {
 		action := func() { downloadSource(submissionId, string(code)) }
 		if err := spinner.New().Title("Waiting for download...").Action(action).Run(); err != nil {
 			logError(fmt.Errorf("error during source code download for submission #%s: %w", submissionId, err))

@@ -66,6 +66,7 @@ const (
 	STAT_FILENAME_EN                = "statement-en.md"
 	URL_STATEMENT                   = API_URL + "problem/%s/get/attachmentByName/%s"
 	URL_ASSETS                      = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
+	URL_CONTEST_ASSETS              = "https://kilonova.ro/assets/contest/%s/leaderboard.csv"
 	URL_RESEND_MAIL                 = API_URL + "user/resendEmail"
 	URL_DELETE_USER                 = API_URL + "user/moderation/deleteUser"
 	userAgent                       = "KilonovaCLIClient/0.2"
