@@ -16,7 +16,7 @@ import (
 	"github.com/charmbracelet/huh/spinner"
 )
 
-type LeaderboardData struct {
+type Leaderboard struct {
 	Status string `json:"status"`
 	Data   struct {
 		ProblemNames map[string]string `json:"problem_names"`
@@ -67,7 +67,7 @@ func leaderboard(contestID string) {
 		utility.LogError(err)
 		return
 	}
-	var data LeaderboardData
+	var data Leaderboard
 	if err = json.Unmarshal(body, &data); err != nil {
 		utility.LogError(err)
 		return
