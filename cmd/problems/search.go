@@ -37,8 +37,9 @@ var SearchCmd = &cobra.Command{
 func init() {
 }
 
-type Search struct {
-	Data struct {
+type SearchResponse struct {
+	Status string `json:"status"`
+	Data   struct {
 		Count    int `json:"count"`
 		Problems []struct {
 			Id            int    `json:"id"`
@@ -61,7 +62,7 @@ func fetchProblems(ProblemName string) ([]table.Row, error) {
 
 	var Rows []table.Row
 
-	Data, err := search(SearchData)
+	Data, err := doSearch(SearchData)
 	if err != nil {
 		return nil, err
 	}
@@ -71,7 +72,7 @@ func fetchProblems(ProblemName string) ([]table.Row, error) {
 	for Page := 0; Page < NumberOfPages; Page++ {
 		SearchData["offset"] = Page * 50
 
-		PageData, err := search(SearchData)
+		PageData, err := doSearch(SearchData)
 		if err != nil {
 			return nil, err
 		}
@@ -95,23 +96,23 @@ func fetchProblems(ProblemName string) ([]table.Row, error) {
 	return Rows, nil
 }
 
-func search(SearchData map[string]interface{}) (*Search, error) {
-	JSONData, err := json.Marshal(SearchData)
+func doSearch(searchData map[string]interface{}) (*SearchResponse, error) {
+	payload, err := json.Marshal(searchData)
 	if err != nil {
-		return nil, fmt.Errorf("error marshaling JSON: %v", err)
+		return nil, fmt.Errorf("JSON marshal error: %w", err)
 	}
 
-	ResponseBody, err := utility.MakePostRequest(utility.URL_SEARCH, bytes.NewBuffer(JSONData), utility.RequestJSON)
+	body, err := utility.MakePostRequest(utility.URL_SEARCH, bytes.NewBuffer(payload), utility.RequestJSON)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("POST request failed: %w", err)
 	}
 
-	var Data Search
-	if err := json.Unmarshal(ResponseBody, &Data); err != nil {
-		return nil, fmt.Errorf("error unmarshaling JSON: %v", err)
+	var res SearchResponse
+	if err := json.Unmarshal(body, &res); err != nil {
+		return nil, fmt.Errorf("JSON unmarshal error: %w", err)
 	}
 
-	return &Data, nil
+	return &res, nil
 }
 
 func searchProblems(ProblemName string) {
@@ -143,7 +144,6 @@ func searchProblems(ProblemName string) {
 }
 
 func chooseLanguageAndShowStatement() {
-	var LanguageChoice string
 	fmt.Print("\nDo you wish to see the statement in RO(r) or EN(e): ")
 
 	if err := keyboard.Open(); err != nil {
@@ -152,28 +152,24 @@ func chooseLanguageAndShowStatement() {
 	}
 	defer keyboard.Close()
 
-	for LanguageChoice == "" {
-		Key, _, err := keyboard.GetSingleKey()
+	for {
+		key, _, err := keyboard.GetSingleKey()
 		if err != nil {
-			utility.LogError(err)
+			utility.LogError(fmt.Errorf("key read error: %w", err))
 			return
 		}
 
-		switch {
-		case Key == rune(keyboard.KeyEsc):
-			LanguageChoice = "ESC"
-		case Key == rune('r') || Key == rune('R'):
-			LanguageChoice = "RO"
-		case Key == rune('e') || Key == rune('E'):
-			LanguageChoice = "EN"
+		switch key {
+		case 'r', 'R':
+			PrintStatement(utility.ChosenProblem, "RO", 1)
+			return
+		case 'e', 'E':
+			PrintStatement(utility.ChosenProblem, "EN", 1)
+			return
+		case rune(keyboard.KeyEsc):
+			return
 		default:
-			LanguageChoice = "ESC"
+			fmt.Print("Please press 'r' for RO or 'e' for EN (ESC to cancel): ")
 		}
 	}
-
-	if LanguageChoice == "ESC" {
-		return
-	}
-
-	PrintStatement(utility.ChosenProblem, LanguageChoice, 1)
 }

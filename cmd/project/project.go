@@ -95,40 +95,50 @@ func configInteractiveProblem(CurrentWorkingDir, NewFolder string) {
 	}
 	defer CPPFile.Close()
 
-	CPPFile.WriteString("#include<iostream>\n#include \"myfunc.h\"\n\n")
-	for _, decl := range funcDecls {
-		CPPFile.WriteString(decl + " {\n")
-		CPPFile.WriteString("\n")
-		CPPFile.WriteString("}\n\n")
-	}
+	CPPFile.WriteString(`#include<iostream>
+#include "myfunc.h"
 
-	CPPFile.WriteString("\nint main(){\n\n\treturn 0;\n}")
+`)
+	for _, decl := range funcDecls {
+		fmt.Fprintf(CPPFile, "%s {\n\n}\n\n", decl)
+	}
+	CPPFile.WriteString("int main() {\n\treturn 0;\n}")
 }
 
-func keyboardIOProblem(ProblemStatement, ProgrammingLanguage, NewFolder string) {
-	if !strings.Contains(ProblemStatement, "stdin") && isCppLang(ProgrammingLanguage) {
-		_ = os.Remove("Source.cpp")
-		CPPFile, err := os.Create("Source.cpp")
-		if err != nil {
-			os.Chdir("..")
-			os.Remove(NewFolder)
-			utility.LogError(fmt.Errorf("error creating .cpp file: %v", err))
-			return
-		}
-		defer CPPFile.Close()
-		CPPFile.WriteString(utility.HelloWorldPrograms[10])
-	} else if !strings.Contains(ProblemStatement, "stdin") && ProgrammingLanguage == "c" {
-		_ = os.Remove("Source.c")
-		CPPFile, err := os.Create("Source.c")
-		if err != nil {
-			os.Chdir("..")
-			os.Remove(NewFolder)
-			utility.LogError(fmt.Errorf("error creating .c file: %v", err))
-			return
-		}
-		defer CPPFile.Close()
-		CPPFile.WriteString(utility.HelloWorldPrograms[9])
+func rollbackAndLog(folder string, err error) {
+	_ = os.Chdir("..")
+	_ = os.Remove(folder)
+	utility.LogError(err)
+}
+
+func keyboardIOProblem(statement, lang, newFolder string) {
+	if strings.Contains(statement, "stdin") {
+		return
 	}
+
+	var filename string
+	var content string
+
+	switch {
+	case isCppLang(lang):
+		filename = "Source.cpp"
+		content = utility.HelloWorldPrograms[10]
+	case lang == "c":
+		filename = "Source.c"
+		content = utility.HelloWorldPrograms[9]
+	default:
+		return
+	}
+
+	_ = os.Remove(filename)
+	file, err := os.Create(filename)
+	if err != nil {
+		rollbackAndLog(newFolder, fmt.Errorf("error creating %s: %w", filename, err))
+		return
+	}
+	defer file.Close()
+
+	file.WriteString(content)
 }
 
 func GetCWDandCreateNewFolder(problemID, ProgrammingLanguage string) (string, string) {
@@ -160,20 +170,27 @@ func GetCWDandCreateNewFolder(problemID, ProgrammingLanguage string) (string, st
 }
 
 func AuxiliaryModifications(problemID, ProgrammingLanguage, CurrentWorkingDir, NewFolder string) {
-	if strings.Contains(utility.GetAProblemName(problemID), "interactiv") {
-		configInteractiveProblem(CurrentWorkingDir, NewFolder)
-	} else {
-		ProblemStatement, err := problem.PrintStatement(problemID, "RO", 2)
-		if err != nil && err.Error() == utility.NOLANG {
-			ProblemStatement, err = problem.PrintStatement(problemID, "EN", 2)
-			if err != nil {
-				utility.LogError(fmt.Errorf("error fetching problem statement: %v", err))
-				return
-			}
-		}
-
-		keyboardIOProblem(ProblemStatement, ProgrammingLanguage, NewFolder)
+	problemName, err := utility.GetAProblemName(problemID)
+	if err != nil {
+		utility.LogError(err)
+		return
 	}
+
+	if strings.Contains(problemName, "interactiv") {
+		configInteractiveProblem(CurrentWorkingDir, NewFolder)
+		return
+	}
+
+	ProblemStatement, err := problem.PrintStatement(problemID, "RO", 2)
+	if err != nil && err.Error() == utility.NOLANG {
+		ProblemStatement, err = problem.PrintStatement(problemID, "EN", 2)
+		if err != nil {
+			utility.LogError(fmt.Errorf("error fetching problem statement: %v", err))
+			return
+		}
+	}
+
+	keyboardIOProblem(ProblemStatement, ProgrammingLanguage, NewFolder)
 
 	if codeBlocksProjectFile {
 		createCodeBlocksProject(problemID)
@@ -227,6 +244,10 @@ func isLanguageSupported(problemID, ProgrammingLanguage string) bool {
 	return false
 }
 
-func isCppLang(ProgrammingLanguage string) bool {
-	return ProgrammingLanguage == "cpp11" || ProgrammingLanguage == "cpp14" || ProgrammingLanguage == "cpp17" || ProgrammingLanguage == "cpp20"
+func isCppLang(lang string) bool {
+	switch lang {
+	case "cpp11", "cpp14", "cpp17", "cpp20":
+		return true
+	}
+	return false
 }

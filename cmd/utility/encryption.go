@@ -6,6 +6,7 @@ import (
 	"crypto/cipher"
 	"crypto/rand"
 	"encoding/base64"
+	"fmt"
 	"io"
 )
 
@@ -16,29 +17,45 @@ func pad(data []byte) []byte {
 	return append(data, bytes.Repeat([]byte{byte(padLen)}, padLen)...)
 }
 
-func unpad(data []byte) []byte {
-	return data[:len(data)-int(data[len(data)-1])]
+func unpad(data []byte) ([]byte, error) {
+	paddingLen := int(data[len(data)-1])
+	if paddingLen > aes.BlockSize || paddingLen == 0 {
+		return nil, fmt.Errorf("invalid padding")
+	}
+	return data[:len(data)-paddingLen], nil
 }
 
 func Encrypt(text string) (string, error) {
 	plain := pad([]byte(text))
+
 	block, err := aes.NewCipher(key)
 	if err != nil {
 		return "", err
 	}
 
 	iv := make([]byte, aes.BlockSize)
-	_, _ = io.ReadFull(rand.Reader, iv)
+	_, err = io.ReadFull(rand.Reader, iv)
+	if err != nil {
+		return "", err
+	}
 
 	cipherText := make([]byte, len(plain))
-	cipher.NewCBCEncrypter(block, iv).CryptBlocks(cipherText, plain)
+	cbc := cipher.NewCBCEncrypter(block, iv)
+	cbc.CryptBlocks(cipherText, plain)
 
 	final := append(iv, cipherText...)
 	return base64.StdEncoding.EncodeToString(final), nil
 }
 
 func Decrypt(encrypted string) (string, error) {
-	data, _ := base64.StdEncoding.DecodeString(encrypted)
+	data, err := base64.StdEncoding.DecodeString(encrypted)
+	if err != nil {
+		return "", err
+	}
+
+	if len(data) < aes.BlockSize {
+		return "", fmt.Errorf("ciphertext too short")
+	}
 	iv := data[:aes.BlockSize]
 	cipherText := data[aes.BlockSize:]
 
@@ -48,7 +65,13 @@ func Decrypt(encrypted string) (string, error) {
 	}
 
 	plain := make([]byte, len(cipherText))
-	cipher.NewCBCDecrypter(block, iv).CryptBlocks(plain, cipherText)
+	cbc := cipher.NewCBCDecrypter(block, iv)
+	cbc.CryptBlocks(plain, cipherText)
 
-	return string(unpad(plain)), nil
+	plain, err = unpad(plain)
+	if err != nil {
+		return "", err
+	}
+
+	return string(plain), nil
 }

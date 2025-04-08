@@ -16,8 +16,8 @@ import (
 )
 
 // get info about user
-func getUserBio(name string) string {
-	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", name))
+func getUserBio(UserName string) string {
+	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", UserName))
 	if err != nil {
 		utility.LogError(err)
 		return utility.ERROR
@@ -35,12 +35,12 @@ func getUserBio(name string) string {
 	return bio
 }
 
-func userGetDetails(user_id, use_case string) bool {
+func userGetDetails(UserID, useCase string) bool {
 	var url string
-	if user_id == "me" {
+	if UserID == "me" {
 		url = utility.URL_SELF
 	} else {
-		url = fmt.Sprintf(utility.URL_USER, user_id)
+		url = fmt.Sprintf(utility.URL_USER, UserID)
 	}
 
 	// Fetch user data
@@ -60,7 +60,7 @@ func userGetDetails(user_id, use_case string) bool {
 		dataUser.Data.DisplayName = "-"
 	}
 
-	switch use_case {
+	switch useCase {
 	case "isadmin":
 		return dataUser.Data.Admin
 	default:
@@ -70,12 +70,12 @@ func userGetDetails(user_id, use_case string) bool {
 	}
 }
 
-func userGetSolvedProblems(userId string) {
+func userGetSolvedProblems(UserID string) {
 	var url string
-	if userId == "me" {
+	if UserID == "me" {
 		url = utility.URL_SELF_PROBLEMS
 	} else {
-		url = fmt.Sprintf(utility.URL_USER_PROBLEMS, userId)
+		url = fmt.Sprintf(utility.URL_USER_PROBLEMS, UserID)
 	}
 
 	ResponseBody, err := utility.MakeGetRequest(url, nil, utility.RequestFormGuest)

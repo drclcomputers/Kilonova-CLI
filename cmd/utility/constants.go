@@ -130,6 +130,8 @@ Source Size: {{.SourceSize}}KB
 Credits: {{.Credits}}
 `
 
+	CMakeFilename = "CMakeLists.txt"
+
 	// Request Types
 
 	RequestNone          RequestType = iota

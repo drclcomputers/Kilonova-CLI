@@ -106,6 +106,11 @@ func printSubmissions(ProblemID, UserID string, FirstPage, LastPage int) {
 		{Title: "Score", Width: 10},
 	}
 
+	if len(Rows) == 0 {
+		utility.LogError(fmt.Errorf("no submissions found"))
+		return
+	}
+
 	utility.RenderTable(Columns, Rows, 1)
 }
 

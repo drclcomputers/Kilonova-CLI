@@ -59,21 +59,18 @@ func GetUserID() string {
 	return strconv.Itoa(user.Data.ID)
 }
 
-func GetAProblemName(problemID string) string {
+func GetAProblemName(problemID string) (string, error) {
 	url := fmt.Sprintf(URL_PROBLEM, problemID)
 	ResponseBody, err := MakeGetRequest(url, nil, RequestNone)
-
 	if err != nil {
-		LogError(err)
-		return ERROR
+		return "", fmt.Errorf("failed to fetch problem details: %w", err)
 	}
 
 	var info ProblemInfo
 	if err := json.Unmarshal(ResponseBody, &info); err != nil {
-		LogError(err)
-		return ERROR
+		return "", fmt.Errorf("failed to parse problem info: %w", err)
 	}
-	return info.Data.Name
+	return info.Data.Name, nil
 }
 
 // Read Token Function
@@ -102,5 +99,5 @@ func ReadToken() (string, bool) {
 // Log Error Function
 
 func LogError(err error) {
-	log.Fatal(RED + err.Error() + WHITE)
+	log.Fatalf("%s%s%s", RED, err.Error(), WHITE)
 }

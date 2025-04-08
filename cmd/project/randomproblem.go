@@ -43,7 +43,7 @@ func problemCount() int {
 		return 0
 	}
 
-	var Data problem.Search
+	var Data problem.SearchResponse
 	err = json.Unmarshal(ResponseBody, &Data)
 	if err != nil {
 		utility.LogError(fmt.Errorf("error unmarshaling JSON: %v", err))
@@ -55,6 +55,12 @@ func problemCount() int {
 }
 
 func getRandomProblemID() {
-	max := problemCount()
-	fmt.Printf("Your random problem's ID: #%d\n", rand.IntN(max)+1)
+	count := problemCount()
+	if count == 0 {
+		fmt.Println("No problems available.")
+		return
+	}
+
+	randomID := rand.IntN(count) + 1
+	fmt.Printf("Your random problem's ID: #%d\n", randomID)
 }

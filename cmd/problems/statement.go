@@ -103,7 +103,7 @@ func GetProblemInfo(ID string) string {
 	return Buffer.String()
 }
 
-func PrintStatement(ID, language string, useCase int) (string, error) {
+func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - Print, 2 - Return text
 	url, err := getStatementURL(ID, language)
 	if err != nil {
 		if useCase == 2 {
@@ -139,7 +139,6 @@ func PrintStatement(ID, language string, useCase int) (string, error) {
 
 	DecodedText := formatText(text)
 	if useCase == 2 {
-		//fmt.Println(DecodedText)
 		return DecodedText, nil
 	}
 
@@ -155,13 +154,15 @@ func PrintStatement(ID, language string, useCase int) (string, error) {
 	return DecodedText, nil
 }
 
-func getStatementURL(ID, Language string) (string, error) {
-	if Language == "RO" {
-		return fmt.Sprintf(utility.URL_STATEMENT, ID, utility.STAT_FILENAME_RO), nil
-	} else if Language == "EN" {
-		return fmt.Sprintf(utility.URL_STATEMENT, ID, utility.STAT_FILENAME_EN), nil
+func getStatementURL(id, lang string) (string, error) {
+	switch strings.ToUpper(lang) {
+	case "RO":
+		return fmt.Sprintf(utility.URL_STATEMENT, id, utility.STAT_FILENAME_RO), nil
+	case "EN":
+		return fmt.Sprintf(utility.URL_STATEMENT, id, utility.STAT_FILENAME_EN), nil
+	default:
+		return "", fmt.Errorf("invalid language choice: %q. Must be 'RO' or 'EN'", lang)
 	}
-	return "", errors.New("invalid language choice, must be 'RO' or 'EN'")
 }
 
 func renderStatement(ID, DecodedText string) (string, error) {

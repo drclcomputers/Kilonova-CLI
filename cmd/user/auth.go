@@ -41,29 +41,7 @@ func loginForm() (string, string) {
 	return username, password
 }
 
-func login(username, password string) {
-	formData := u.Values{
-		"username": {username},
-		"password": {password},
-	}
-
-	ResponseBody, err := utility.MakePostRequest(utility.URL_LOGIN, bytes.NewBufferString(formData.Encode()), utility.RequestFormGuest)
-	if err != nil {
-		utility.LogError(fmt.Errorf("login failed: %v", err))
-		return
-	}
-
-	if !bytes.Contains(ResponseBody, []byte(utility.SUCCESS)) {
-		utility.LogError(fmt.Errorf("login failed: invalid credentials"))
-		return
-	}
-
-	var response utility.KilonovaResponse
-	if err := json.Unmarshal(ResponseBody, &response); err != nil {
-		utility.LogError(fmt.Errorf("error parsing response: %v", err))
-		return
-	}
-
+func createLoginToken(response utility.KilonovaResponse) {
 	homedir, err := os.UserHomeDir()
 	if err != nil {
 		utility.LogError(err)
@@ -94,11 +72,49 @@ func login(username, password string) {
 		utility.LogError(fmt.Errorf("error writing auth token to file: %v", err))
 		return
 	}
+}
+
+func login(username, password string) {
+	formData := u.Values{
+		"username": {username},
+		"password": {password},
+	}
+
+	ResponseBody, err := utility.MakePostRequest(utility.URL_LOGIN, bytes.NewBufferString(formData.Encode()), utility.RequestFormGuest)
+	if err != nil {
+		utility.LogError(fmt.Errorf("login failed: %v", err))
+		return
+	}
+
+	if !bytes.Contains(ResponseBody, []byte(utility.SUCCESS)) {
+		utility.LogError(fmt.Errorf("login failed: invalid credentials"))
+		return
+	}
+
+	var response utility.KilonovaResponse
+	if err := json.Unmarshal(ResponseBody, &response); err != nil {
+		utility.LogError(fmt.Errorf("error parsing response: %v", err))
+		return
+	}
+
+	createLoginToken(response)
 
 	fmt.Println("Login successful!")
 }
 
 // logout
+
+func removeTokenFile() {
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		utility.LogError(err)
+		return
+	}
+	configDir := filepath.Join(homedir, ".config", "kn-cli")
+	tokenFile := filepath.Join(configDir, "token")
+	_ = os.Remove(tokenFile)
+}
+
 func logout() {
 	JSONData := []byte(`{"key": "value"}`)
 	ResponseBody, err := utility.MakePostRequest(utility.URL_LOGOUT, bytes.NewBuffer(JSONData), utility.RequestFormAuth)
@@ -109,14 +125,7 @@ func logout() {
 
 	if bytes.Contains(ResponseBody, []byte(utility.SUCCESS)) {
 		fmt.Println("Logged out successfully!")
-		homedir, err := os.UserHomeDir()
-		if err != nil {
-			utility.LogError(err)
-			return
-		}
-		configDir := filepath.Join(homedir, ".config", "kn-cli")
-		tokenFile := filepath.Join(configDir, "token")
-		_ = os.Remove(tokenFile)
+		removeTokenFile()
 	}
 	log.Println("Logout failed: You must be logged in to do this!")
 }

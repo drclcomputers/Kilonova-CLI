@@ -16,6 +16,12 @@ import (
 	utility "kilocli/cmd/utility"
 )
 
+func writeFile(filename, content string) {
+	if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
+		utility.LogError(fmt.Errorf("failed to write file %s: %v", filename, err))
+	}
+}
+
 func copyFile(src, dest string) error {
 	SourceFile, err := os.Open(src)
 	if err != nil {
@@ -100,59 +106,58 @@ func unzip(Source string, Destination string) error {
 func createCodeBlocksProject(ProjectName string) {
 	XMLCodeBlocksProjectFile := fmt.Sprintf(utility.XMLCBPStruct, ProjectName, ProjectName, ProjectName)
 
-	File, err := os.Create(fmt.Sprintf("%s.cbp", ProjectName))
+	codeBlocksFilename := fmt.Sprintf("%s.cbp", ProjectName)
+	File, err := os.Create(codeBlocksFilename)
 	if err != nil {
 		utility.LogError(fmt.Errorf("error creating .cbp file: %v", err))
 		return
 	}
 	defer File.Close()
 
-	File.WriteString(XMLCodeBlocksProjectFile)
+	writeFile(codeBlocksFilename, XMLCodeBlocksProjectFile)
 }
 
 func createCMakeProjectFile(ProjectName string) {
 	CMakeProjectFileTXT := fmt.Sprintf(utility.CMAKEStruct, ProjectName, ProjectName)
 
-	File, err := os.Create("CMakeLists.txt")
+	File, err := os.Create(utility.CMakeFilename)
 	if err != nil {
 		utility.LogError(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
 		return
 	}
 	defer File.Close()
 
-	File.WriteString(CMakeProjectFileTXT)
+	writeFile(utility.CMakeFilename, CMakeProjectFileTXT)
+}
+
+func createSourceFile(cwd, language string) {
+	sourcePath := filepath.Join(cwd, "Source.")
+	program, ext := getProgramByLanguage(language)
+
+	sourcePath += ext
+	writeFile(sourcePath, program)
 }
 
 // 0-C 1-CPP 2-GO 3-Kotlin 4-JS 5-PAS 6-PHP 7-Python 8-Rust
-func createSourceFile(CurrentWorkingDir, ProgrammingLanguage string) {
-	SourceFilename := filepath.Join(CurrentWorkingDir, "Source.")
-	switch ProgrammingLanguage {
+func getProgramByLanguage(language string) (program, extension string) {
+	switch language {
 	case "c":
-		SourceFilename += "c"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[0]), 0644)
+		return utility.HelloWorldPrograms[0], "c"
 	case "golang":
-		SourceFilename += "go"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[2]), 0644)
+		return utility.HelloWorldPrograms[2], "go"
 	case "kotlin":
-		SourceFilename += "kt"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[3]), 0644)
+		return utility.HelloWorldPrograms[3], "kt"
 	case "nodejs":
-		SourceFilename += "js"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[4]), 0644)
+		return utility.HelloWorldPrograms[4], "js"
 	case "pascal":
-		SourceFilename += "pas"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[5]), 0644)
+		return utility.HelloWorldPrograms[5], "pas"
 	case "php":
-		SourceFilename += "php"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[6]), 0644)
+		return utility.HelloWorldPrograms[6], "php"
 	case "python3":
-		SourceFilename += "py"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[7]), 0644)
+		return utility.HelloWorldPrograms[7], "py"
 	case "rust":
-		SourceFilename += "rs"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[8]), 0644)
+		return utility.HelloWorldPrograms[8], "rs"
 	default:
-		SourceFilename += "cpp"
-		os.WriteFile(SourceFilename, []byte(utility.HelloWorldPrograms[1]), 0644)
+		return utility.HelloWorldPrograms[1], "cpp"
 	}
 }
