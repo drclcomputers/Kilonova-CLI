@@ -44,7 +44,7 @@ type Search struct {
 			Id            int    `json:"id"`
 			Name          string `json:"name"`
 			SourceCredits string `json:"source_credits"`
-			Max_Score     int    `json:"max_score"`
+			MaxScore      int    `json:"max_score"`
 		}
 	} `json:"data"`
 }
@@ -77,8 +77,8 @@ func fetchProblems(ProblemName string) ([]table.Row, error) {
 		}
 
 		for _, Problem := range PageData.Data.Problems {
-			if Problem.Max_Score == -1 {
-				Problem.Max_Score = 0
+			if Problem.MaxScore == -1 {
+				Problem.MaxScore = 0
 			}
 			if Problem.SourceCredits == "" {
 				Problem.SourceCredits = "-"
@@ -87,7 +87,7 @@ func fetchProblems(ProblemName string) ([]table.Row, error) {
 				strconv.Itoa(Problem.Id),
 				Problem.Name,
 				Problem.SourceCredits,
-				strconv.Itoa(Problem.Max_Score),
+				strconv.Itoa(Problem.MaxScore),
 			})
 		}
 	}

@@ -16,6 +16,21 @@ import (
 	"github.com/charmbracelet/huh/spinner"
 )
 
+type LeaderboardData struct {
+	Status string `json:"status"`
+	Data   struct {
+		ProblemNames map[string]string `json:"problem_names"`
+		Entries      []struct {
+			User struct {
+				ID   int    `json:"id"`
+				Name string `json:"name"`
+			} `json:"user"`
+			Scores map[string]int `json:"scores"`
+			Total  int            `json:"total"`
+		} `json:"entries"`
+	} `json:"data"`
+}
+
 func downloadLeaderboard(contestID string) {
 	resp, err := utility.MakeGetRequest(fmt.Sprintf(utility.URL_CONTEST_ASSETS, contestID), nil, utility.RequestDownloadZip)
 	if err != nil {

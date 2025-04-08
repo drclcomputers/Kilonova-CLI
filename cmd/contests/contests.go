@@ -140,9 +140,9 @@ func createContest(name, contestType string) {
 
 	if data.Status != utility.SUCCESS {
 		fmt.Println("Failed to create a contest!")
-	} else {
-		fmt.Println("Your contest's ID: #", string(data.Data))
+		return
 	}
+	fmt.Println("Your contest's ID: #", string(data.Data))
 }
 
 func registerContest(contestID string) {

@@ -23,9 +23,9 @@ func setUserBio(bio string) {
 
 	if resp.Status == utility.SUCCESS {
 		fmt.Println("Success! Bio changed!")
-	} else {
-		fmt.Println("Error: Failed to change bio!")
 	}
+	fmt.Println("Error: Failed to change bio!")
+
 }
 
 func changeName(newName, password string) {
@@ -41,10 +41,8 @@ func changeName(newName, password string) {
 
 	if resp.Status == utility.SUCCESS {
 		fmt.Println("Success! Name changed!")
-	} else {
-		utility.LogError(fmt.Errorf("failed to change name"))
-		return
 	}
+	utility.LogError(fmt.Errorf("failed to change name"))
 }
 
 func changePass(oldPass, newPass string) {
@@ -61,10 +59,8 @@ func changePass(oldPass, newPass string) {
 	if resp.Status == utility.SUCCESS {
 		fmt.Println("Success! Password changed! You'll need to login again.")
 		logout()
-	} else {
-		utility.LogError(fmt.Errorf("failed to change password"))
-		return
 	}
+	utility.LogError(fmt.Errorf("failed to change password"))
 }
 
 func changeEmail(email, password string) {
@@ -86,10 +82,8 @@ func changeEmail(email, password string) {
 
 	if res.Status == utility.SUCCESS {
 		fmt.Println("Success! Email changed!")
-	} else {
-		utility.LogError(fmt.Errorf("failed to change email"))
-		return
 	}
+	utility.LogError(fmt.Errorf("failed to change email"))
 }
 
 func resetPass(email string) {

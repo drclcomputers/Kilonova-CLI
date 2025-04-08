@@ -277,35 +277,35 @@ func viewMyQuestionsContest(contestID string) {
 	if data.Status != utility.SUCCESS {
 		utility.LogError(fmt.Errorf("couldn't retrieve questions"))
 		return
-	} else {
-		for _, quest := range data.Data {
-			ok = true
-			formattedTime, err := utility.ParseTime(quest.Time)
-			if err != nil {
-				utility.LogError(err)
-				return
-			}
-
-			Rows = append(Rows, table.Row{
-				formattedTime,
-				fmt.Sprintf("%d", quest.Id),
-				quest.Text,
-				quest.Response,
-			})
-
+	}
+	for _, quest := range data.Data {
+		ok = true
+		formattedTime, err := utility.ParseTime(quest.Time)
+		if err != nil {
+			utility.LogError(err)
+			return
 		}
+
+		Rows = append(Rows, table.Row{
+			formattedTime,
+			fmt.Sprintf("%d", quest.Id),
+			quest.Text,
+			quest.Response,
+		})
+
 	}
 
 	if !ok {
 		fmt.Println("No questions have been asked!")
-	} else {
-		Columns := []table.Column{
-			{Title: "Time", Width: 19},
-			{Title: "ID", Width: 5},
-			{Title: "Text", Width: 35},
-			{Title: "Response", Width: 21},
-		}
-
-		utility.RenderTable(Columns, Rows, 1)
+		return
 	}
+	Columns := []table.Column{
+		{Title: "Time", Width: 19},
+		{Title: "ID", Width: 5},
+		{Title: "Text", Width: 35},
+		{Title: "Response", Width: 21},
+	}
+
+	utility.RenderTable(Columns, Rows, 1)
+
 }

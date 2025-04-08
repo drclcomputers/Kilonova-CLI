@@ -32,14 +32,17 @@ func init() {
 }
 
 func saveToFile(filename string, data []byte) error {
-	File, err := os.Create(filename)
+	file, err := os.Create(filename)
 	if err != nil {
-		return err
+		return fmt.Errorf("could not create file: %w", err)
 	}
-	defer File.Close()
+	defer file.Close()
 
-	_, err = File.Write(data)
-	return err
+	if _, err := file.Write(data); err != nil {
+		return fmt.Errorf("could not write to file: %w", err)
+	}
+
+	return nil
 }
 
 func GetAssets(id string) error {
@@ -52,8 +55,7 @@ func GetAssets(id string) error {
 		return err
 	}
 
-	err = saveToFile(OutputFile, DataToBeWritten)
-	if err != nil {
+	if err := saveToFile(OutputFile, DataToBeWritten); err != nil {
 		utility.LogError(fmt.Errorf("error saving file: %v", err))
 		return err
 	}

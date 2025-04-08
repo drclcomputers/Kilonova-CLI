@@ -117,9 +117,8 @@ func logout() {
 		configDir := filepath.Join(homedir, ".config", "kn-cli")
 		tokenFile := filepath.Join(configDir, "token")
 		_ = os.Remove(tokenFile)
-	} else {
-		log.Println("Logout failed: You must be logged in to do this!")
 	}
+	log.Println("Logout failed: You must be logged in to do this!")
 }
 
 func extendSession() {
@@ -142,8 +141,7 @@ func extendSession() {
 			return
 		}
 		fmt.Println("Your session has been extended until ", formattedTime)
-	} else {
-		fmt.Println(resp.Data)
 	}
+	fmt.Println(resp.Data)
 
 }
