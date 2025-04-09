@@ -97,21 +97,6 @@ type ContestQuestions struct {
 	}
 }
 
-type LeaderboardData struct {
-	Status string `json:"status"`
-	Data   struct {
-		ProblemNames map[string]string `json:"problem_names"`
-		Entries      []struct {
-			User struct {
-				ID   int    `json:"id"`
-				Name string `json:"name"`
-			} `json:"user"`
-			Scores map[string]int `json:"scores"`
-			Total  int            `json:"total"`
-		} `json:"entries"`
-	} `json:"data"`
-}
-
 type ContestUpdate struct {
 	ContestID string
 	DataForm  string
