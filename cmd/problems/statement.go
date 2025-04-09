@@ -15,7 +15,7 @@ import (
 
 	"text/template"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"

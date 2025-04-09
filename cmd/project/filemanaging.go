@@ -13,7 +13,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 )
 
 func writeFile(filename, content string) {

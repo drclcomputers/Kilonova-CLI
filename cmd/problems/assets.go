@@ -9,7 +9,7 @@ import (
 	"fmt"
 	"os"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"

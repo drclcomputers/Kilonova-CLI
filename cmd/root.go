@@ -6,18 +6,19 @@
 package cmd
 
 import (
-	contest "kilocli/cmd/contests"
-	problem "kilocli/cmd/problems"
-	project "kilocli/cmd/project"
-	submission "kilocli/cmd/submission"
-	user "kilocli/cmd/user"
+	contest "kncli/cmd/contests"
+	db "kncli/cmd/database"
+	problem "kncli/cmd/problems"
+	project "kncli/cmd/project"
+	submission "kncli/cmd/submission"
+	user "kncli/cmd/user"
 	"os"
 
 	"github.com/spf13/cobra"
 )
 
 var RootCmd = &cobra.Command{
-	Use:     "kilocli",
+	Use:     "kncli",
 	Version: "v0.2.7",
 	Short:   "A CLI client for the competitive programming platform Kilonova ",
 	Long: `Kilonova-CLI is a command-line interface (CLI) client designed for interacting 
@@ -53,5 +54,7 @@ func init() {
 	RootCmd.AddCommand(user.LogoutCmd)
 	RootCmd.AddCommand(user.UserGetDetailsCmd)
 	RootCmd.AddCommand(user.UserSolvedProblemsCmd)
+
+	RootCmd.AddCommand(db.RefreshDBCmd)
 
 }

@@ -8,7 +8,7 @@ package contests
 import (
 	"encoding/json"
 	"fmt"
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 	"os"
 	"path/filepath"
 

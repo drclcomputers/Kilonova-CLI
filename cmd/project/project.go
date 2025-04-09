@@ -13,10 +13,10 @@ import (
 	"regexp"
 	"strings"
 
-	problem "kilocli/cmd/problems"
-	"kilocli/cmd/submission"
+	problem "kncli/cmd/problems"
+	"kncli/cmd/submission"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"

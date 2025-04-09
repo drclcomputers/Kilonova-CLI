@@ -9,8 +9,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	problem "kilocli/cmd/problems"
-	utility "kilocli/cmd/utility"
+	problem "kncli/cmd/problems"
+	utility "kncli/cmd/utility"
 	"math/rand/v2"
 
 	"github.com/spf13/cobra"

@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 	u "net/url"
 )
 
@@ -23,6 +23,7 @@ func setUserBio(bio string) {
 
 	if resp.Status == utility.SUCCESS {
 		fmt.Println("Success! Bio changed!")
+		return
 	}
 	fmt.Println("Error: Failed to change bio!")
 
@@ -41,6 +42,7 @@ func changeName(newName, password string) {
 
 	if resp.Status == utility.SUCCESS {
 		fmt.Println("Success! Name changed!")
+		return
 	}
 	utility.LogError(fmt.Errorf("failed to change name"))
 }
@@ -59,6 +61,7 @@ func changePass(oldPass, newPass string) {
 	if resp.Status == utility.SUCCESS {
 		fmt.Println("Success! Password changed! You'll need to login again.")
 		logout()
+		return
 	}
 	utility.LogError(fmt.Errorf("failed to change password"))
 }
@@ -82,6 +85,7 @@ func changeEmail(email, password string) {
 
 	if res.Status == utility.SUCCESS {
 		fmt.Println("Success! Email changed!")
+		return
 	}
 	utility.LogError(fmt.Errorf("failed to change email"))
 }

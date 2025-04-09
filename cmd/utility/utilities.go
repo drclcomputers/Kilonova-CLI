@@ -81,7 +81,7 @@ func ReadToken() (string, bool) {
 		LogError(fmt.Errorf("failed to get user home directory: %w", err))
 	}
 
-	tokenPath := filepath.Join(homedir, ".config", "kn-cli", "token")
+	tokenPath := filepath.Join(homedir, CONFIGFOLDER, KNCLIFOLDER, TOKENFILENAME)
 	data, err := os.ReadFile(tokenPath)
 	if err != nil {
 		return "", false

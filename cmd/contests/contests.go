@@ -12,7 +12,7 @@ import (
 	u "net/url"
 	"strconv"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"

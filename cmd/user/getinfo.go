@@ -8,7 +8,7 @@ package user
 import (
 	"encoding/json"
 	"fmt"
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 	"net/http"
 
 	"github.com/PuerkitoBio/goquery"

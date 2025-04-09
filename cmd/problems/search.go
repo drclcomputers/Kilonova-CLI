@@ -11,7 +11,7 @@ import (
 	"fmt"
 	"strconv"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/eiannone/keyboard"

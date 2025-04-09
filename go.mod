@@ -3,7 +3,7 @@
 // This work is licensed under the terms of the MIT license.
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
-module kilocli
+module kncli
 
 go 1.24.1
 
@@ -16,6 +16,7 @@ require (
 	github.com/charmbracelet/huh/spinner v0.0.0-20250331173942-310cd4a379ac
 	github.com/charmbracelet/lipgloss v1.1.0
 	github.com/eiannone/keyboard v0.0.0-20220611211555-0d226195f203
+	github.com/mattn/go-sqlite3 v1.14.27
 	github.com/spf13/cobra v1.9.1
 )
 

@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 	"mime/multipart"
 	"os"
 

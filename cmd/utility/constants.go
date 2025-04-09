@@ -254,3 +254,10 @@ var ReplacementsRegex = []string{
 	`\\textit{(.*?)}`,
 	`\\rule\{[^}]+\}\{[^}]+\}`,
 }
+
+const (
+	CONFIGFOLDER     = ".config"
+	KNCLIFOLDER      = "kncli"
+	TOKENFILENAME    = "token"
+	PROBLEMSDATABASE = "problems.db"
+)

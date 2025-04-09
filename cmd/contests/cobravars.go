@@ -6,7 +6,7 @@
 package contests
 
 import (
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 	"strconv"
 
 	"github.com/spf13/cobra"

@@ -9,7 +9,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 	"log"
 	u "net/url"
 	"os"
@@ -47,13 +47,13 @@ func createLoginToken(response utility.KilonovaResponse) {
 		utility.LogError(err)
 		return
 	}
-	configDir := filepath.Join(homedir, ".config", "kn-cli")
+	configDir := filepath.Join(homedir, utility.CONFIGFOLDER, utility.KNCLIFOLDER)
 	err = os.MkdirAll(configDir, os.ModePerm)
 	if err != nil {
 		utility.LogError(err)
 		return
 	}
-	tokenFile := filepath.Join(configDir, "token")
+	tokenFile := filepath.Join(configDir, utility.TOKENFILENAME)
 
 	file, err := os.Create(tokenFile)
 	if err != nil {
@@ -110,8 +110,8 @@ func removeTokenFile() {
 		utility.LogError(err)
 		return
 	}
-	configDir := filepath.Join(homedir, ".config", "kn-cli")
-	tokenFile := filepath.Join(configDir, "token")
+	configDir := filepath.Join(homedir, utility.CONFIGFOLDER, utility.KNCLIFOLDER)
+	tokenFile := filepath.Join(configDir, utility.TOKENFILENAME)
 	_ = os.Remove(tokenFile)
 }
 

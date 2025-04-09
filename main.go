@@ -5,7 +5,7 @@
 
 package main
 
-import "kilocli/cmd"
+import "kncli/cmd"
 
 func main() {
 	cmd.Execute()

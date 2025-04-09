@@ -10,7 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/bubbles/table"
 )

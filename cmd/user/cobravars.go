@@ -7,7 +7,7 @@ package user
 
 import (
 	"fmt"
-	utility "kilocli/cmd/utility"
+	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
