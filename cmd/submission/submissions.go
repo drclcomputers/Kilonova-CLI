@@ -6,7 +6,6 @@
 package submission
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 
@@ -14,9 +13,6 @@ import (
 
 	"github.com/charmbracelet/bubbles/table"
 )
-
-// /go:embed highlight/*.yaml
-var highlightDir embed.FS
 
 var shouldDownload bool = false
 
