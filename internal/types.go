@@ -3,7 +3,7 @@
 // This work is licensed under the terms of the MIT license.
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
-package utility
+package internal
 
 import (
 	"encoding/json"
@@ -33,14 +33,22 @@ type KilonovaResponse struct {
 	Data   string `json:"data"`
 }
 
+type Problem struct {
+	Id            int     `json:"id"`
+	Name          string  `json:"name"`
+	Time          float64 `json:"time_limit"`
+	MemoryLimit   int     `json:"memory_limit"`
+	SourceSize    int     `json:"source_size"`
+	SourceCredits string  `json:"source_credits"`
+	MaxScore      int     `json:"max_score"`
+}
 type ProblemInfo struct {
-	Data struct {
-		Name          string  `json:"name"`
-		Time          float64 `json:"time_limit"`
-		MemoryLimit   int     `json:"memory_limit"`
-		SourceSize    int     `json:"source_size"`
-		SourceCredits string  `json:"source_credits"`
-	} `json:"data"`
+	Data Problem `json:"data"`
+}
+
+type ProblemList struct {
+	Status string `json:"status"`
+	Data   []Problem
 }
 
 // TEXT MODEL
@@ -116,7 +124,7 @@ func NewTable(table table.Model) *Model {
 
 // Search Table
 
-var ChosenProblem string = ""
+var ChosenProblem = ""
 
 var GlobalRows []table.Row
 
@@ -150,7 +158,7 @@ func (TableModel TableSearch) HandleSelection() (tea.Model, tea.Cmd) {
 	SelectedIndex := TableModel.table.Cursor()
 	SelectedProblem := GlobalRows[SelectedIndex]
 
-	ChosenProblem = string(SelectedProblem[0])
+	ChosenProblem = SelectedProblem[0]
 
 	return TableModel, tea.Quit
 }

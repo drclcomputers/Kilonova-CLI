@@ -4,74 +4,149 @@
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
 // The database is used to store problem statements and other data related to the problems to reduce
-// the number of API calls made to the Kilonova server. The database is not yet fully functional
-// and is still being developed. Please, be patient until more features are added.
+// the number of API calls made to the Kilonova servers.
 
 package database
 
 import (
-	"database/sql"
-	utility "kncli/cmd/utility"
-	"os"
-	"path/filepath"
-
+	"fmt"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/cobra"
+	"kncli/cmd/problems"
+	"kncli/internal"
+	"os"
+	"path/filepath"
+	"strconv"
+
+	"github.com/charmbracelet/huh/spinner"
 )
 
-var RefreshDBCmd = &cobra.Command{
-	Use:   "refresh",
-	Short: "Refreshes the problem database",
+var DatabaseCmd = &cobra.Command{
+	Use:   "database",
+	Short: "Interact with the problem database",
+}
+
+var CreateDBCmd = &cobra.Command{
+	Use:   "create",
+	Short: "Creates the problem database.",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		refreshDB()
+		action := func() { CreateDB() }
+		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+			internal.LogError(err)
+			return
+		}
 	},
 }
 
-func returnConfigDir() string {
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		utility.LogError(err)
-		return "error"
-	}
-	configDir := filepath.Join(homedir, utility.CONFIGFOLDER, utility.KNCLIFOLDER)
-	err = os.MkdirAll(configDir, os.ModePerm)
-	if err != nil {
-		utility.LogError(err)
-		return "error"
-	}
-	return configDir
+var DeleteDBCmd = &cobra.Command{
+	Use:   "delete",
+	Short: "Deletes the problem database.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		deleteDB()
+	},
 }
 
-func dBExistsOrCreate() *sql.DB {
-	DBFilename := filepath.Join(returnConfigDir(), utility.PROBLEMSDATABASE)
-	db, err := sql.Open("sqlite3", DBFilename)
+var RefreshDBCmd = &cobra.Command{
+	Use:   "refresh",
+	Short: "Refreshes the problem database.",
+	Args:  cobra.ExactArgs(0),
+	Run: func(cmd *cobra.Command, args []string) {
+		action := func() { CreateDB() }
+		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+			refreshDB()
+			return
+		}
+	},
+}
+
+func init() {
+	DatabaseCmd.AddCommand(CreateDBCmd)
+	DatabaseCmd.AddCommand(DeleteDBCmd)
+	DatabaseCmd.AddCommand(RefreshDBCmd)
+}
+
+func CreateDB() {
+	db := internal.DBOpen()
+
+	createProblemTableSQL := `CREATE TABLE IF NOT EXISTS problems (
+id INTEGER PRIMARY KEY,
+name TEXT,
+timelimit FLOAT,
+memorylimit INTEGER,
+sourcesize INTEGER,
+credits TEXT,
+statement TEXT
+);`
+	_, err := db.Exec(createProblemTableSQL)
 	if err != nil {
-		utility.LogError(err)
-		return nil
+		internal.LogError(err)
 	}
-	return db
+
+	internal.DBClose(db)
+
+	println("Database created successfully.")
+
+	refreshDB()
+
+}
+
+func deleteDB() {
+	if !internal.DBExists() {
+		fmt.Println(`Database file does not exist.`)
+	}
+	dbFile := filepath.Join(internal.GetConfigDir(), internal.PROBLEMSDATABASE)
+	err := os.Remove(dbFile)
+	if err != nil {
+		internal.LogError(err)
+	}
+	println("Database deleted successfully.")
 }
 
 func refreshDB() {
-	db := dBExistsOrCreate()
-
-	createTableSQL := `CREATE TABLE IF NOT EXISTS problems (
-id INTEGER PRIMARY KEY,
-name TEXT,
-source TEXT,
-timelimit INTEGER,
-memorylimit INTEGER,
-maxscore INTEGER,
-credits TEXT,
-statement TEXT
-	);`
-	_, err := db.Exec(createTableSQL)
-	if err != nil {
-		utility.LogError(err)
+	if !internal.DBExists() {
+		fmt.Println(`Database file does not exist.`)
 	}
 
-	println("Database refreshed successfully.")
+	url := fmt.Sprintf(internal.URL_PROBLEM, "get")
+	data, err := internal.PostJSON[internal.ProblemList](url, nil)
+	if err != nil {
+		internal.LogError(err)
+	}
 
-	defer db.Close()
+	db := internal.DBOpen()
+
+	for _, problem := range data.Data {
+		query := `SELECT EXISTS(SELECT 1 FROM problems WHERE id = $1)`
+		var exists bool
+		err := db.QueryRow(query, problem.Id).Scan(&exists)
+		if err != nil {
+			internal.LogError(err)
+		}
+
+		if exists {
+			continue
+		}
+
+		statement := problems.GetStatementOnline(strconv.Itoa(problem.Id), "RO")
+		if statement == internal.NOLANG {
+			statement = problems.GetStatementOnline(strconv.Itoa(problem.Id), "EN")
+		}
+
+		insertSQL := `INSERT INTO problems (id, name, sourcesize, timelimit, memorylimit, credits, statement)
+ VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (id) DO NOTHING;`
+
+		_, err = db.Exec(insertSQL, problem.Id, problem.Name, problem.SourceSize,
+			problem.Time, problem.MemoryLimit, problem.SourceCredits, statement)
+		if err != nil {
+			internal.LogError(fmt.Errorf("error inserting problem info: %v", err))
+		}
+
+	}
+
+	internal.DBClose(db)
+
+	fmt.Println("Database refreshed successfully.")
 }

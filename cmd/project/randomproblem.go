@@ -6,11 +6,8 @@
 package project
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	problem "kncli/cmd/problems"
-	utility "kncli/cmd/utility"
+	"kncli/internal"
 	"math/rand/v2"
 
 	"github.com/spf13/cobra"
@@ -25,37 +22,12 @@ var GetRandPbCmd = &cobra.Command{
 	},
 }
 
-func problemCount() int {
-	SearchData := map[string]interface{}{
-		"name_fuzzy": "",
-		"offset":     0,
-	}
-
-	JSONData, err := json.Marshal(SearchData)
-	if err != nil {
-		utility.LogError(fmt.Errorf("error marshaling JSON: %v", err))
-		return 0
-	}
-
-	ResponseBody, err := utility.MakePostRequest(utility.URL_SEARCH, bytes.NewBuffer(JSONData), utility.RequestJSON)
-	if err != nil {
-		utility.LogError(err)
-		return 0
-	}
-
-	var Data problem.SearchResponse
-	err = json.Unmarshal(ResponseBody, &Data)
-	if err != nil {
-		utility.LogError(fmt.Errorf("error unmarshaling JSON: %v", err))
-		return 0
-	}
-
-	return Data.Data.Count
-
+func ProblemCount() int {
+	return internal.CountProblemsDB()
 }
 
 func getRandomProblemID() {
-	count := problemCount()
+	count := ProblemCount()
 	if count == 0 {
 		fmt.Println("No problems available.")
 		return

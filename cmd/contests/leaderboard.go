@@ -8,7 +8,7 @@ package contests
 import (
 	"encoding/json"
 	"fmt"
-	utility "kncli/cmd/utility"
+	"kncli/internal"
 	"os"
 	"path/filepath"
 
@@ -32,28 +32,28 @@ type Leaderboard struct {
 }
 
 func downloadLeaderboard(contestID string) {
-	resp, err := utility.MakeGetRequest(fmt.Sprintf(utility.URL_CONTEST_ASSETS, contestID), nil, utility.RequestDownloadZip)
+	resp, err := internal.MakeGetRequest(fmt.Sprintf(internal.URL_CONTEST_ASSETS, contestID), nil, internal.RequestDownloadZip)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
 	homedir, err := os.Getwd()
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to get current working directory: %w", err))
+		internal.LogError(fmt.Errorf("failed to get current working directory: %w", err))
 		return
 	}
 
 	downFile := filepath.Join(homedir, "leaderboard_"+contestID+".csv")
 	outFile, err := os.Create(downFile)
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to create file %q: %w", downFile, err))
+		internal.LogError(fmt.Errorf("failed to create file %q: %w", downFile, err))
 		return
 	}
 	defer outFile.Close()
 
 	if err := os.WriteFile(downFile, resp, 0644); err != nil {
-		utility.LogError(fmt.Errorf("failed to write to file %q: %w", downFile, err))
+		internal.LogError(fmt.Errorf("failed to write to file %q: %w", downFile, err))
 		return
 	}
 
@@ -61,15 +61,15 @@ func downloadLeaderboard(contestID string) {
 }
 
 func leaderboard(contestID string) {
-	url := fmt.Sprintf(utility.URL_CONTEST_LEADERBOARD, contestID)
-	body, err := utility.MakeGetRequest(url, nil, utility.RequestNone)
+	url := fmt.Sprintf(internal.URL_CONTEST_LEADERBOARD, contestID)
+	body, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 	var data Leaderboard
 	if err = json.Unmarshal(body, &data); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
@@ -100,12 +100,12 @@ func leaderboard(contestID string) {
 		{Title: "Total", Width: 5},
 	}
 
-	utility.RenderTable(Columns, Rows, 1)
+	internal.RenderTable(Columns, Rows, 1)
 
 	if shouldDownload {
 		action := func() { downloadLeaderboard(contestID) }
 		if err := spinner.New().Title("Waiting for shouldDownload...").Action(action).Run(); err != nil {
-			utility.LogError(fmt.Errorf("error during source code shouldDownload for submission #%s: %w", contestID, err))
+			internal.LogError(fmt.Errorf("error during source code shouldDownload for submission #%s: %w", contestID, err))
 			return
 		}
 	}

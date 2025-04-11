@@ -3,7 +3,7 @@
 // This work is licensed under the terms of the MIT license.
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
-package utility
+package internal
 
 import (
 	"bytes"
@@ -11,6 +11,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strings"
 )
 
 func CreateRequest(req http.Request, reqType RequestType, contentType ...string) *http.Request {
@@ -40,6 +41,7 @@ func CreateRequest(req http.Request, reqType RequestType, contentType ...string)
 		} else {
 			LogError(fmt.Errorf("missing content type for multipart form request"))
 		}
+	default:
 	}
 
 	if hasToken {
@@ -73,10 +75,12 @@ func MakeRequest(method, url string, ResponseBody io.Reader, reqType RequestType
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		if strings.Contains(string(data), "not") {
+			return []byte("notfound"), nil
+		}
 		var res RawKilonovaResponse
 		if err := json.Unmarshal(data, &res); err != nil {
 			LogError(err)
-			return nil, err
 		}
 		LogError(fmt.Errorf("error: %s", string(res.Data)))
 	}

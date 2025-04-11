@@ -7,10 +7,9 @@ package user
 
 import (
 	"fmt"
+	utility "kncli/internal"
 	"os"
 	"text/template"
-
-	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/bubbles/table"
 )

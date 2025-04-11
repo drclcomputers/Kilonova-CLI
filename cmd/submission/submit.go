@@ -10,17 +10,17 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	utility "kncli/cmd/utility"
+	"kncli/internal"
 	"mime/multipart"
 	"os"
 
 	"github.com/charmbracelet/huh/spinner"
 )
 
-func uploadCode(id, language, file, contest_id string) {
+func uploadCode(id, language, file, contestID string) {
 	codeFile, err := os.Open(file)
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to open code file %s: %w", file, err))
+		internal.LogError(fmt.Errorf("failed to open code file %s: %w", file, err))
 		return
 	}
 	defer codeFile.Close()
@@ -29,18 +29,18 @@ func uploadCode(id, language, file, contest_id string) {
 	writer := multipart.NewWriter(&requestBody)
 
 	if err := writeFormFields(writer, id, language); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
 	if err := writeCodeFile(writer, file, codeFile); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	if contest_id != "NO" {
-		if err := writeFormContest(writer, contest_id); err != nil {
-			utility.LogError(err)
+	if contestID != "NO" {
+		if err := writeFormContest(writer, contestID); err != nil {
+			internal.LogError(err)
 			return
 		}
 	}
@@ -48,13 +48,13 @@ func uploadCode(id, language, file, contest_id string) {
 	contentType := writer.FormDataContentType()
 
 	if err := writer.Close(); err != nil {
-		utility.LogError(fmt.Errorf("failed to close writer: %w", err))
+		internal.LogError(fmt.Errorf("failed to close writer: %w", err))
 		return
 	}
 
-	ResponseBody, err := utility.MakePostRequest(utility.URL_SUBMIT, &requestBody, utility.RequestMultipartForm, contentType)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_SUBMIT, &requestBody, internal.RequestMultipartForm, contentType)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error submitting code: %w", err))
+		internal.LogError(fmt.Errorf("error submitting code: %w", err))
 		return
 	}
 
@@ -79,8 +79,8 @@ func writeFormFields(writer *multipart.Writer, id, language string) error {
 }
 
 func writeFormContest(writer *multipart.Writer, id string) error {
-	if err := writer.WriteField("contest_id", id); err != nil {
-		return fmt.Errorf("failed to write contest_id field: %w", err)
+	if err := writer.WriteField("contestID", id); err != nil {
+		return fmt.Errorf("failed to write contestID field: %w", err)
 	}
 	return nil
 }
@@ -99,26 +99,26 @@ func writeCodeFile(writer *multipart.Writer, file string, codeFile *os.File) err
 func handleSubmissionError(ResponseBody []byte) {
 	var dataerr SubmitError
 	if err := json.Unmarshal(ResponseBody, &dataerr); err != nil {
-		utility.LogError(fmt.Errorf("failed to parse error response: %w", err))
+		internal.LogError(fmt.Errorf("failed to parse error response: %w", err))
 		return
 	}
-	utility.LogError(fmt.Errorf("status: %s\nmessage: %s", dataerr.Status, dataerr.Data))
+	internal.LogError(fmt.Errorf("status: %s\nmessage: %s", dataerr.Status, dataerr.Data))
 }
 
 func checkSubmissionStatus(submissionID int) {
-	url := fmt.Sprintf(utility.URL_LATEST_SUBMISSION, submissionID)
+	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, submissionID)
 
 	action := func() {
 		var dataLatestSubmit LatestSubmission
 		for {
-			ResponseBody, err := utility.MakeGetRequest(url, nil, utility.RequestNone)
+			ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 			if err != nil {
-				utility.LogError(fmt.Errorf("failed to get submission status: %w", err))
+				internal.LogError(fmt.Errorf("failed to get submission status: %w", err))
 				return
 			}
 
 			if err := json.Unmarshal(ResponseBody, &dataLatestSubmit); err != nil {
-				utility.LogError(fmt.Errorf("failed to parse latest submission response: %w", err))
+				internal.LogError(fmt.Errorf("failed to parse latest submission response: %w", err))
 				return
 			}
 
@@ -137,7 +137,7 @@ func checkSubmissionStatus(submissionID int) {
 	}
 
 	if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-		utility.LogError(fmt.Errorf("spinner error: %w", err))
+		internal.LogError(fmt.Errorf("spinner error: %w", err))
 		return
 	}
 }

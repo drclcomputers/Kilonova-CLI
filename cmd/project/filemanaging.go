@@ -9,16 +9,15 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"kncli/internal"
 	"os"
 	"path/filepath"
 	"strings"
-
-	utility "kncli/cmd/utility"
 )
 
 func writeFile(filename, content string) {
 	if err := os.WriteFile(filename, []byte(content), 0644); err != nil {
-		utility.LogError(fmt.Errorf("failed to write file %s: %v", filename, err))
+		internal.LogError(fmt.Errorf("failed to write file %s: %v", filename, err))
 	}
 }
 
@@ -74,7 +73,7 @@ func unzip(Source string, Destination string) error {
 		FilePathNotThePackage := filepath.Join(Destination, File.Name)
 
 		if File.FileInfo().IsDir() {
-			os.MkdirAll(FilePathNotThePackage, os.ModePerm)
+			_ = os.MkdirAll(FilePathNotThePackage, os.ModePerm)
 			continue
 		}
 
@@ -86,30 +85,31 @@ func unzip(Source string, Destination string) error {
 		if err != nil {
 			return err
 		}
-		defer SourceFile.Close()
 
 		DestinationFile, err := os.Create(FilePathNotThePackage)
 		if err != nil {
 			return err
 		}
-		defer DestinationFile.Close()
 
 		_, err = io.Copy(DestinationFile, SourceFile)
 		if err != nil {
 			return err
 		}
+
+		_ = SourceFile.Close()
+		_ = DestinationFile.Close()
 	}
 
 	return nil
 }
 
 func createCodeBlocksProject(ProjectName string) {
-	XMLCodeBlocksProjectFile := fmt.Sprintf(utility.XMLCBPStruct, ProjectName, ProjectName, ProjectName)
+	XMLCodeBlocksProjectFile := fmt.Sprintf(internal.XMLCBPStruct, ProjectName, ProjectName, ProjectName)
 
 	codeBlocksFilename := fmt.Sprintf("%s.cbp", ProjectName)
 	File, err := os.Create(codeBlocksFilename)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error creating .cbp file: %v", err))
+		internal.LogError(fmt.Errorf("error creating .cbp file: %v", err))
 		return
 	}
 	defer File.Close()
@@ -118,16 +118,16 @@ func createCodeBlocksProject(ProjectName string) {
 }
 
 func createCMakeProjectFile(ProjectName string) {
-	CMakeProjectFileTXT := fmt.Sprintf(utility.CMAKEStruct, ProjectName, ProjectName)
+	CMakeProjectFileTXT := fmt.Sprintf(internal.CMAKEStruct, ProjectName, ProjectName)
 
-	File, err := os.Create(utility.CMakeFilename)
+	File, err := os.Create(internal.CMakeFilename)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
+		internal.LogError(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
 		return
 	}
 	defer File.Close()
 
-	writeFile(utility.CMakeFilename, CMakeProjectFileTXT)
+	writeFile(internal.CMakeFilename, CMakeProjectFileTXT)
 }
 
 func createSourceFile(cwd, language string) {
@@ -142,22 +142,22 @@ func createSourceFile(cwd, language string) {
 func getProgramByLanguage(language string) (program, extension string) {
 	switch language {
 	case "c":
-		return utility.HelloWorldPrograms[0], "c"
+		return internal.HelloWorldPrograms[0], "c"
 	case "golang":
-		return utility.HelloWorldPrograms[2], "go"
+		return internal.HelloWorldPrograms[2], "go"
 	case "kotlin":
-		return utility.HelloWorldPrograms[3], "kt"
+		return internal.HelloWorldPrograms[3], "kt"
 	case "nodejs":
-		return utility.HelloWorldPrograms[4], "js"
+		return internal.HelloWorldPrograms[4], "js"
 	case "pascal":
-		return utility.HelloWorldPrograms[5], "pas"
+		return internal.HelloWorldPrograms[5], "pas"
 	case "php":
-		return utility.HelloWorldPrograms[6], "php"
+		return internal.HelloWorldPrograms[6], "php"
 	case "python3":
-		return utility.HelloWorldPrograms[7], "py"
+		return internal.HelloWorldPrograms[7], "py"
 	case "rust":
-		return utility.HelloWorldPrograms[8], "rs"
+		return internal.HelloWorldPrograms[8], "rs"
 	default:
-		return utility.HelloWorldPrograms[1], "cpp"
+		return internal.HelloWorldPrograms[1], "cpp"
 	}
 }

@@ -7,7 +7,7 @@ package submission
 
 import (
 	"fmt"
-	utility "kncli/cmd/utility"
+	utility "kncli/internal"
 	"strconv"
 
 	"github.com/spf13/cobra"

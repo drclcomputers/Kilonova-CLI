@@ -9,16 +9,15 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
+	"kncli/internal"
 	u "net/url"
 	"strconv"
-
-	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/spf13/cobra"
 )
 
-var shouldDownload bool = false
+var shouldDownload = false
 
 var ContestCmd = &cobra.Command{
 	Use:   "contest [command] ...",
@@ -110,20 +109,20 @@ func createContest(name, contestType string) {
 		"type": {contestType},
 	}
 
-	body, err := utility.MakePostRequest(utility.URL_CONTEST_CREATE, bytes.NewBufferString(formData.Encode()), utility.RequestFormAuth)
+	body, err := internal.MakePostRequest(internal.URL_CONTEST_CREATE, bytes.NewBufferString(formData.Encode()), internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var data utility.RawKilonovaResponse
+	var data internal.RawKilonovaResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to decode response: %w", err))
+		internal.LogError(fmt.Errorf("failed to decode response: %w", err))
 		return
 	}
 
-	if data.Status != utility.SUCCESS {
+	if data.Status != internal.SUCCESS {
 		fmt.Println("Failed to create a contest!")
 		return
 	}
@@ -131,30 +130,30 @@ func createContest(name, contestType string) {
 }
 
 func registerContest(contestID string) {
-	url := fmt.Sprintf(utility.URL_CONTEST_REGISTER, contestID)
-	body, err := utility.PostJSON[utility.KilonovaResponse](url, nil)
+	url := fmt.Sprintf(internal.URL_CONTEST_REGISTER, contestID)
+	body, err := internal.PostJSON[internal.KilonovaResponse](url, nil)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 	fmt.Println(body.Data)
 }
 
 func startContest(contestID string) {
-	url := fmt.Sprintf(utility.URL_CONTEST_START, contestID)
-	body, err := utility.PostJSON[utility.KilonovaResponse](url, nil)
+	url := fmt.Sprintf(internal.URL_CONTEST_START, contestID)
+	body, err := internal.PostJSON[internal.KilonovaResponse](url, nil)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 	fmt.Println(body.Data)
 }
 
 func deleteContest(contestID string) {
-	url := fmt.Sprintf(utility.URL_CONTEST_DELETE, contestID)
-	body, err := utility.PostJSON[utility.KilonovaResponse](url, nil)
+	url := fmt.Sprintf(internal.URL_CONTEST_DELETE, contestID)
+	body, err := internal.PostJSON[internal.KilonovaResponse](url, nil)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 	fmt.Println(body.Data)
@@ -163,59 +162,59 @@ func deleteContest(contestID string) {
 // manage contest
 
 func updateProblems(contestID string, problemsID []string) {
-	url := fmt.Sprintf(utility.URL_CONTEST_UPDATE_PROBLEMS, contestID)
+	url := fmt.Sprintf(internal.URL_CONTEST_UPDATE_PROBLEMS, contestID)
 
-	var problemsID_int []int
+	var problemsIDInt []int
 	for _, s := range problemsID {
 		num, err := strconv.Atoi(s)
 		if err != nil {
-			utility.LogError(err)
+			internal.LogError(err)
 			return
 		}
-		problemsID_int = append(problemsID_int, num)
+		problemsIDInt = append(problemsIDInt, num)
 	}
 
 	payload := map[string]interface{}{
-		"list": problemsID_int,
+		"list": problemsIDInt,
 	}
 
 	jsonBytes, err := json.Marshal(payload)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	body, err := utility.MakePostRequest(url, bytes.NewBuffer(jsonBytes), utility.RequestJSON)
+	body, err := internal.MakePostRequest(url, bytes.NewBuffer(jsonBytes), internal.RequestJSON)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var data utility.KilonovaResponse
+	var data internal.KilonovaResponse
 	err = json.Unmarshal(body, &data)
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to decode response: %w", err))
+		internal.LogError(fmt.Errorf("failed to decode response: %w", err))
 		return
 	}
 
-	if data.Status != utility.SUCCESS {
+	if data.Status != internal.SUCCESS {
 		fmt.Println("Failed to update problems!")
 	} else {
-		fmt.Println(string(data.Data))
+		fmt.Println(data.Data)
 	}
 }
 
 func showProblems(contestID string) {
-	url := fmt.Sprintf(utility.URL_CONTEST_PROBLEMS, contestID)
-	body, err := utility.MakeGetRequest(url, nil, utility.RequestNone)
+	url := fmt.Sprintf(internal.URL_CONTEST_PROBLEMS, contestID)
+	body, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 	var data ContestData
 	if err = json.Unmarshal(body, &data); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
@@ -223,8 +222,8 @@ func showProblems(contestID string) {
 
 	var Rows []table.Row
 
-	if data.Status != utility.SUCCESS {
-		utility.LogError(fmt.Errorf("couldn't retrieve contest problems"))
+	if data.Status != internal.SUCCESS {
+		internal.LogError(fmt.Errorf("couldn't retrieve contest problems"))
 		return
 	} else {
 		for _, problem := range data.Data {
@@ -246,33 +245,33 @@ func showProblems(contestID string) {
 			{Title: "Max Score", Width: 10},
 		}
 
-		utility.RenderTable(Columns, Rows, 1)
+		internal.RenderTable(Columns, Rows, 1)
 	}
 
 }
 
 func infoContest(contestID, useCase string) ContestInfo {
-	url := fmt.Sprintf(utility.URL_CONTEST, contestID)
-	body, err := utility.MakeGetRequest(url, nil, utility.RequestInfo)
+	url := fmt.Sprintf(internal.URL_CONTEST, contestID)
+	body, err := internal.MakeGetRequest(url, nil, internal.RequestInfo)
 
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return ContestInfo{}
 	}
 	var data ContestInfo
 	if err = json.Unmarshal(body, &data); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return ContestInfo{}
 	}
 	if useCase != "2" {
-		parsedtime1, err := utility.ParseTime(data.Data.StartTime)
+		parsedtime1, err := internal.ParseTime(data.Data.StartTime)
 		if err != nil {
-			utility.LogError(err)
+			internal.LogError(err)
 			return ContestInfo{}
 		}
-		parsedtime2, err := utility.ParseTime(data.Data.EndTime)
+		parsedtime2, err := internal.ParseTime(data.Data.EndTime)
 		if err != nil {
-			utility.LogError(err)
+			internal.LogError(err)
 			return ContestInfo{}
 		}
 		fmt.Printf("Name: %s\nStart time: %s\nEnd time: %s\nMax submissions per problem: %d\n",
@@ -284,21 +283,21 @@ func infoContest(contestID, useCase string) ContestInfo {
 }
 
 func modifyGeneralContest(update ContestUpdate) {
-	url := fmt.Sprintf(utility.URL_CONTEST_UPDATE, update.ContestID)
+	url := fmt.Sprintf(internal.URL_CONTEST_UPDATE, update.ContestID)
 
 	formData := u.Values{
 		update.DataForm: {update.Value},
 	}
 
-	body, err := utility.MakePostRequest(url, bytes.NewBufferString(formData.Encode()), utility.RequestFormAuth)
+	body, err := internal.MakePostRequest(url, bytes.NewBufferString(formData.Encode()), internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var data utility.KilonovaResponse
+	var data internal.KilonovaResponse
 	if err = json.Unmarshal(body, &data); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 

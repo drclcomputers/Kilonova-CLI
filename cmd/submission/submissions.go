@@ -9,8 +9,7 @@ import (
 	"embed"
 	"encoding/json"
 	"fmt"
-
-	utility "kncli/cmd/utility"
+	"kncli/internal"
 
 	"github.com/charmbracelet/bubbles/table"
 )
@@ -18,7 +17,7 @@ import (
 // /go:embed highlight/*.yaml
 var highlightDir embed.FS
 
-var shouldDownload bool = false
+var shouldDownload = false
 
 func init() {
 	SubmissionCmd.AddCommand(PrintSubmissionsCmd)
@@ -32,28 +31,28 @@ func init() {
 func getSubmissionURL(UserID, ProblemID string, OffSet int) string {
 	switch {
 	case UserID == "all" && ProblemID == "all":
-		return fmt.Sprintf(utility.URL_SUBMISSION_LIST_NO_FILTER, OffSet)
+		return fmt.Sprintf(internal.URL_SUBMISSION_LIST_NO_FILTER, OffSet)
 	case UserID == "all":
-		return fmt.Sprintf(utility.URL_SUBMISSION_LIST_NO_USER, OffSet, ProblemID)
+		return fmt.Sprintf(internal.URL_SUBMISSION_LIST_NO_USER, OffSet, ProblemID)
 	case ProblemID == "all":
-		return fmt.Sprintf(utility.URL_SUBMISSION_LIST_NO_PROBLEM, OffSet, UserID)
+		return fmt.Sprintf(internal.URL_SUBMISSION_LIST_NO_PROBLEM, OffSet, UserID)
 	default:
-		return fmt.Sprintf(utility.URL_SUBMISSION_LIST, OffSet, ProblemID, UserID)
+		return fmt.Sprintf(internal.URL_SUBMISSION_LIST, OffSet, ProblemID, UserID)
 	}
 }
 
 func printSubmissions(ProblemID, UserID string, FirstPage, LastPage int) {
 	if UserID == "me" {
-		UserID = utility.GetUserID()
+		UserID = internal.GetUserID()
 	}
 
 	if FirstPage <= 0 || LastPage <= 0 {
-		utility.LogError(fmt.Errorf("invalid pages: both FirstPage and LastPage must be positive integers"))
+		internal.LogError(fmt.Errorf("invalid pages: both FirstPage and LastPage must be positive integers"))
 		return
 	}
 
 	if FirstPage > LastPage {
-		utility.LogError(fmt.Errorf("FirstPage cannot be greater than LastPage"))
+		internal.LogError(fmt.Errorf("FirstPage cannot be greater than LastPage"))
 		return
 	}
 
@@ -66,23 +65,23 @@ func printSubmissions(ProblemID, UserID string, FirstPage, LastPage int) {
 	for OffSet := max(startOffset, 0); (OffSet < count || count < 0) && OffSet < endOffset; OffSet += 50 {
 		url := getSubmissionURL(UserID, ProblemID, OffSet)
 
-		ResponseBody, err := utility.MakeGetRequest(url, nil, utility.RequestFormAuth)
+		ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestFormAuth)
 		if err != nil {
-			utility.LogError(err)
+			internal.LogError(err)
 			continue
 		}
 
 		if err := json.Unmarshal(ResponseBody, &DataSubmissions); err != nil {
-			utility.LogError(err)
+			internal.LogError(err)
 			continue
 		}
 
 		count = DataSubmissions.Data.Count
 
 		for _, problem := range DataSubmissions.Data.Submissions {
-			formattedTime, err := utility.ParseTime(problem.CreatedAt)
+			formattedTime, err := internal.ParseTime(problem.CreatedAt)
 			if err != nil {
-				utility.LogError(err)
+				internal.LogError(err)
 				continue
 			}
 
@@ -107,24 +106,24 @@ func printSubmissions(ProblemID, UserID string, FirstPage, LastPage int) {
 	}
 
 	if len(Rows) == 0 {
-		utility.LogError(fmt.Errorf("no submissions found"))
+		internal.LogError(fmt.Errorf("no submissions found"))
 		return
 	}
 
-	utility.RenderTable(Columns, Rows, 1)
+	internal.RenderTable(Columns, Rows, 1)
 }
 
 func CheckLanguages(ProblemID string, useCase int) []string {
-	url := fmt.Sprintf(utility.URL_LANGS_PB, ProblemID)
-	ResponseBody, err := utility.MakeGetRequest(url, nil, utility.RequestNone)
+	url := fmt.Sprintf(internal.URL_LANGS_PB, ProblemID)
+	ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to make request for problem ID %s: %w", ProblemID, err))
+		internal.LogError(fmt.Errorf("failed to make request for problem ID %s: %w", ProblemID, err))
 		return nil
 	}
 
 	var langs Languages
 	if err := json.Unmarshal(ResponseBody, &langs); err != nil {
-		utility.LogError(fmt.Errorf("error unmarshalling languages response: %w", err))
+		internal.LogError(fmt.Errorf("error unmarshalling languages response: %w", err))
 		return nil
 	}
 

@@ -3,7 +3,7 @@
 // This work is licensed under the terms of the MIT license.
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
-package utility
+package internal
 
 import (
 	"bytes"
@@ -20,6 +20,15 @@ import (
 
 // Utility Functions
 
+func ProblemExists(ID string) bool {
+	url := fmt.Sprintf(URL_PROBLEM, ID)
+	body, _ := MakeGetRequest(url, nil, RequestNone)
+	if string(body) == "notfound" {
+		return false
+	}
+	return true
+}
+
 func DecodeBase64Text(EncodedText string) (string, error) {
 	DecodedText, err := b64.StdEncoding.DecodeString(EncodedText)
 	if err != nil {
@@ -28,11 +37,25 @@ func DecodeBase64Text(EncodedText string) (string, error) {
 	return string(DecodedText), nil
 }
 
+func EncodeBase64Text(DecodedText string) (string, error) {
+	EncodedText := b64.StdEncoding.EncodeToString([]byte(DecodedText))
+	return EncodedText, nil
+}
+
 func ValidateBoolean(input string) (bool, error) {
 	if input != BOOLTRUE && input != BOOLFALSE {
 		return false, fmt.Errorf("value must be either 'true' or 'false'")
 	}
 	return input == BOOLTRUE, nil
+}
+
+func ValidateInt(input string) (int, error) {
+	var err error
+	var nr int
+	if nr, err = strconv.Atoi(input); err == nil {
+		return nr, nil
+	}
+	return 0, err
 }
 
 func ParseTime(timeStr string) (string, error) {
@@ -73,15 +96,26 @@ func GetAProblemName(problemID string) (string, error) {
 	return info.Data.Name, nil
 }
 
+func GetConfigDir() string {
+	homedir, err := os.UserHomeDir()
+	if err != nil {
+		LogError(err)
+		return "error"
+	}
+	configDir := filepath.Join(homedir, CONFIGFOLDER, KNCLIFOLDER)
+	err = os.MkdirAll(configDir, os.ModePerm)
+	if err != nil {
+		LogError(err)
+		return "error"
+	}
+	return configDir
+}
+
 // Read Token Function
 
 func ReadToken() (string, bool) {
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		LogError(fmt.Errorf("failed to get user home directory: %w", err))
-	}
+	tokenPath := filepath.Join(GetConfigDir(), TOKENFILENAME)
 
-	tokenPath := filepath.Join(homedir, CONFIGFOLDER, KNCLIFOLDER, TOKENFILENAME)
 	data, err := os.ReadFile(tokenPath)
 	if err != nil {
 		return "", false

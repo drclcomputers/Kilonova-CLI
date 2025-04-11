@@ -9,9 +9,9 @@ import (
 	contest "kncli/cmd/contests"
 	db "kncli/cmd/database"
 	problem "kncli/cmd/problems"
-	project "kncli/cmd/project"
-	submission "kncli/cmd/submission"
-	user "kncli/cmd/user"
+	"kncli/cmd/project"
+	"kncli/cmd/submission"
+	"kncli/cmd/user"
 	"os"
 
 	"github.com/spf13/cobra"
@@ -55,6 +55,6 @@ func init() {
 	RootCmd.AddCommand(user.UserGetDetailsCmd)
 	RootCmd.AddCommand(user.UserSolvedProblemsCmd)
 
-	RootCmd.AddCommand(db.RefreshDBCmd)
+	RootCmd.AddCommand(db.DatabaseCmd)
 
 }

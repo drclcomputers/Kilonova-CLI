@@ -10,37 +10,43 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"kncli/internal"
 	"regexp"
 	"strings"
 
 	"text/template"
-
-	utility "kncli/cmd/utility"
 
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/glamour"
 	"github.com/spf13/cobra"
 )
 
+var Online = false
+
 var PrintStatementCmd = &cobra.Command{
-	Use:   "statement [ID] [RO or EN]",
-	Short: "Print problem statement in chosen language",
-	Args:  cobra.ExactArgs(2),
+	Use:   "statement [ID] [RO or EN (required for online)]",
+	Short: "Print problem statement in chosen language.",
+	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
-		PrintStatement(args[0], args[1], 1)
+		if len(args) > 1 {
+			_, _ = PrintStatement(args[0], args[1], 1)
+		} else {
+			_, _ = PrintStatement(args[0], "NO_LANG_CHOSEN", 1)
+		}
 	},
 }
 
 func init() {
+	PrintStatementCmd.Flags().BoolVarP(&Online, "online", "o", false, "Get problem statement online.")
 }
 
 func formatText(DecodedText string) string {
 
-	for Old, New := range utility.Replacements {
+	for Old, New := range internal.Replacements {
 		DecodedText = strings.ReplaceAll(DecodedText, Old, New)
 	}
 
-	for _, Pattern := range utility.ReplacementsRegex {
+	for _, Pattern := range internal.ReplacementsRegex {
 		Regexp := regexp.MustCompile(Pattern)
 		DecodedText = Regexp.ReplaceAllString(DecodedText, "$1")
 	}
@@ -58,18 +64,47 @@ type Statement struct {
 	} `json:"data"`
 }
 
-func GetProblemInfo(ID string) string {
-	url := fmt.Sprintf(utility.URL_PROBLEM, ID)
-	ResponseBody, err := utility.MakeGetRequest(url, nil, utility.RequestNone)
+// Problem Details
+
+func GetProblemInfoStructOnline(ID string) (internal.ProblemInfo, error) {
+	url := fmt.Sprintf(internal.URL_PROBLEM, ID)
+	ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 	if err != nil {
-		utility.LogError(err)
-		return ""
+		internal.LogError(err)
 	}
 
-	var ProblemInfo utility.ProblemInfo
+	var ProblemInfo internal.ProblemInfo
 	if err := json.Unmarshal(ResponseBody, &ProblemInfo); err != nil {
-		utility.LogError(err)
-		return ""
+		var res internal.RawKilonovaResponse
+		if err := json.Unmarshal(ResponseBody, &res); err != nil {
+			internal.LogError(err)
+		}
+		return internal.ProblemInfo{}, fmt.Errorf("no")
+	}
+
+	return ProblemInfo, nil
+}
+
+func GetProblemInfoStructLocal(ID string) (internal.ProblemInfo, error) {
+	db := internal.DBOpen()
+	defer db.Close()
+
+	query := "SELECT id, name, timelimit, memorylimit, sourcesize, credits FROM problems\nWHERE CAST(id AS TEXT) LIKE $1;"
+
+	var data internal.Problem
+	_ = db.QueryRow(query, ID).Scan(&data.Id, &data.Name, &data.Time, &data.MemoryLimit, &data.SourceSize, &data.SourceCredits)
+
+	fmt.Println(data)
+
+	return internal.ProblemInfo{Data: data}, nil
+}
+
+func GetProblemInfoText(ID string) string {
+	var ProblemInfo internal.ProblemInfo
+	if Online {
+		ProblemInfo, _ = GetProblemInfoStructOnline(ID)
+	} else {
+		ProblemInfo, _ = GetProblemInfoStructLocal(ID)
 	}
 
 	data := struct {
@@ -88,53 +123,97 @@ func GetProblemInfo(ID string) string {
 		Credits:     ProblemInfo.Data.SourceCredits,
 	}
 
-	TemplateCompleted, err := template.New("ProblemInfo").Parse(utility.TemplatePattern)
+	if data.Credits == "" {
+		data.Credits = "-"
+	}
+
+	TemplateCompleted, err := template.New("ProblemInfo").Parse(internal.TemplatePattern)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return ""
 	}
 
 	var Buffer bytes.Buffer
 	if err := TemplateCompleted.Execute(&Buffer, data); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return ""
 	}
 
 	return Buffer.String()
 }
 
-func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - Print, 2 - Return text
+// Problem statement
+
+func getStatementURL(id, lang string) (string, error) {
+	switch strings.ToUpper(lang) {
+	case "RO":
+		return fmt.Sprintf(internal.URL_STATEMENT, id, internal.STAT_FILENAME_RO), nil
+	case "EN":
+		return fmt.Sprintf(internal.URL_STATEMENT, id, internal.STAT_FILENAME_EN), nil
+	default:
+		return "", fmt.Errorf("invalid language chosen: %q. Must be 'RO' or 'EN'", lang)
+	}
+}
+
+func GetStatementOnline(ID, language string) string {
 	url, err := getStatementURL(ID, language)
 	if err != nil {
-		if useCase == 2 {
-			return "", errors.New(utility.NOLANG)
-		}
-		return "", fmt.Errorf("error fetching URL: %w", err)
+		internal.LogError(fmt.Errorf("error fetching URL: %w", err))
 	}
 
-	ResponseBody, err := utility.MakeGetRequest(url, nil, utility.RequestNone)
+	ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 	if err != nil {
-		if useCase == 2 {
-			return "", errors.New(utility.NOLANG)
-		}
-		return "", fmt.Errorf("error fetching statement: %w", err)
+		internal.LogError(fmt.Errorf("error fetching statement: %w", err))
 	}
 
-	if strings.Contains(string(ResponseBody), `"status":utility.ERROR`) {
-		return "", errors.New("problem statement not available in the chosen language")
+	if strings.Contains(string(ResponseBody), "notfound") {
+		return internal.NOLANG
 	}
 
 	var Statement Statement
 	if err := json.Unmarshal(ResponseBody, &Statement); err != nil {
-		return "", fmt.Errorf("failed to parse statement: %w", err)
+		internal.LogError(fmt.Errorf("failed to parse statement: %w", err))
 	}
 
-	text, err := utility.DecodeBase64Text(Statement.Data.Data)
+	return Statement.Data.Data
+}
+
+func GetStatementLocal(ID string) string {
+	db := internal.DBOpen()
+	defer db.Close()
+
+	query := "SELECT statement FROM problems\nWHERE CAST(id AS TEXT) LIKE $1;"
+
+	var statement string
+	_ = db.QueryRow(query, ID).Scan(&statement)
+
+	return statement
+}
+
+func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - Print, 2 - Return text
+	var statement string
+	if Online {
+		statement = GetStatementOnline(ID, language)
+	} else {
+		statement = GetStatementLocal(ID)
+	}
+
+	if statement == internal.NOLANG {
+		if language == "RO" {
+			internal.LogError(fmt.Errorf("statement not available in Romanian. Try again in English"))
+		} else if language == "EN" {
+			internal.LogError(fmt.Errorf("statement not available in English. Try again in Romanian"))
+		} else {
+			internal.LogError(fmt.Errorf("unknoun language chosen. Must be either RO or EN"))
+		}
+	}
+
+	text, err := internal.DecodeBase64Text(statement)
 	if err != nil {
 		if useCase == 2 {
-			return "", errors.New(utility.NOLANG)
+			internal.LogError(errors.New(internal.NOLANG))
 		}
-		return "", fmt.Errorf("failed to decode base64 text: %w", err)
+		internal.LogError(fmt.Errorf("failed to decode base64 text: %w", err))
 	}
 
 	DecodedText := formatText(text)
@@ -144,29 +223,20 @@ func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - P
 
 	Rendered, err := renderStatement(ID, DecodedText)
 	if err != nil {
-		return "", fmt.Errorf("failed to render statement: %w", err)
+		return "error", fmt.Errorf("failed to render statement: %w", err)
 	}
 
 	if err := runTUI(Rendered); err != nil {
-		return "", fmt.Errorf("failed to run TUI program: %w", err)
+		return "error", fmt.Errorf("failed to run TUI program: %w", err)
 	}
 
 	return DecodedText, nil
 }
 
-func getStatementURL(id, lang string) (string, error) {
-	switch strings.ToUpper(lang) {
-	case "RO":
-		return fmt.Sprintf(utility.URL_STATEMENT, id, utility.STAT_FILENAME_RO), nil
-	case "EN":
-		return fmt.Sprintf(utility.URL_STATEMENT, id, utility.STAT_FILENAME_EN), nil
-	default:
-		return "", fmt.Errorf("invalid language choice: %q. Must be 'RO' or 'EN'", lang)
-	}
-}
+// Others
 
 func renderStatement(ID, DecodedText string) (string, error) {
-	ProblemInfoText := GetProblemInfo(ID)
+	ProblemInfoText := GetProblemInfoText(ID)
 	if ProblemInfoText == "" {
 		return "", errors.New("failed to retrieve problem information")
 	}
@@ -185,7 +255,7 @@ func renderStatement(ID, DecodedText string) (string, error) {
 }
 
 func runTUI(rendered string) error {
-	p := tea.NewProgram(utility.NewTextModel(rendered))
+	p := tea.NewProgram(internal.NewTextModel(rendered))
 	if _, err := p.Run(); err != nil {
 		return fmt.Errorf("failed to run TUI program: %w", err)
 	}
