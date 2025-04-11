@@ -16,11 +16,11 @@ import (
 
 var GetAssetsCmd = &cobra.Command{
 	Use:   "assets [Problem ID]",
-	Short: "Download the assets for a problem.",
+	Short: "Download the assets for a problem. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { _ = GetAssets(args[0]) }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 			internal.LogError(err)
 			return
 		}

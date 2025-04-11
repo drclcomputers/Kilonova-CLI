@@ -30,7 +30,7 @@ var InitProjectCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { initProject(args[0], args[1]) }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 			internal.LogError(err)
 			return
 		}

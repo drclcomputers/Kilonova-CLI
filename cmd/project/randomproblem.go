@@ -29,7 +29,7 @@ func ProblemCount() int {
 func getRandomProblemID() {
 	count := ProblemCount()
 	if count == 0 {
-		fmt.Println("No problems available.")
+		fmt.Println("No problems available in the database.")
 		return
 	}
 

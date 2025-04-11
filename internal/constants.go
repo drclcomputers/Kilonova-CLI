@@ -142,11 +142,9 @@ Credits: {{.Credits}}
 	RequestInfo                      // 5
 	RequestMultipartForm             // 6
 
-	// Colors
 	RED   = "\033[31m"
 	WHITE = "\033[0m"
 
-	// Others
 	BOOLTRUE  = "true"
 	BOOLFALSE = "false"
 	NOLANG    = "nolang"

@@ -11,7 +11,6 @@ import (
 	"fmt"
 	"kncli/cmd/database"
 	"kncli/internal"
-	"log"
 	u "net/url"
 	"os"
 	"path/filepath"
@@ -115,7 +114,6 @@ func logout() {
 		fmt.Println("Logged out successfully!")
 		removeTokenFile()
 	}
-	log.Println("Logout failed: You must be logged in to do this!")
 }
 
 func extendSession() {

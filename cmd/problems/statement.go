@@ -29,7 +29,9 @@ var PrintStatementCmd = &cobra.Command{
 	Args:  cobra.RangeArgs(1, 2),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) > 1 {
+			fmt.Println("Starting network services for online searching ...")
 			_, _ = PrintStatement(args[0], args[1], 1)
+			fmt.Println("Disabling network services for online searching ...")
 		} else {
 			_, _ = PrintStatement(args[0], "NO_LANG_CHOSEN", 1)
 		}
@@ -179,6 +181,9 @@ func GetStatementOnline(ID, language string) string {
 }
 
 func GetStatementLocal(ID string) string {
+	if !internal.DBExists() {
+		internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
+	}
 	db := internal.DBOpen()
 	defer db.Close()
 

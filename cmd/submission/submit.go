@@ -136,7 +136,7 @@ func checkSubmissionStatus(submissionID int) {
 		}
 	}
 
-	if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+	if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 		internal.LogError(fmt.Errorf("spinner error: %w", err))
 		return
 	}

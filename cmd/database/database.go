@@ -28,7 +28,7 @@ var DatabaseCmd = &cobra.Command{
 
 var CreateDBCmd = &cobra.Command{
 	Use:   "create",
-	Short: "Creates the problem database.",
+	Short: "Creates the problem database. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { CreateDB() }
@@ -50,7 +50,7 @@ var DeleteDBCmd = &cobra.Command{
 
 var RefreshDBCmd = &cobra.Command{
 	Use:   "refresh",
-	Short: "Refreshes the problem database.",
+	Short: "Refreshes the problem database. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { CreateDB() }

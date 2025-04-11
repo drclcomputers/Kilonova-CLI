@@ -177,6 +177,10 @@ func chooseLanguageAndShowStatement() {
 }
 
 func searchProblemsLocal(ProblemName string) {
+	if !internal.DBExists() {
+		internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
+	}
+
 	db := internal.DBOpen()
 	defer internal.DBClose(db)
 
