@@ -132,9 +132,9 @@ func printTemplateSubmission(details SubmissionDetails, formattedTime string, co
 }
 
 func formatCodeOutput(code string, lang string) string {
-	// if len(code) > 500 {
-	// 	code = code[:500] + "...\n"
-	// }
+	if len(code) > 600 {
+		code = code[:600] + "...\n"
+	}
 
 	// More syntax files: https://github.com/zyedidia/highlight
 	syntaxFile, err := highlightDir.ReadFile("highlight/" + lang + ".yaml")
