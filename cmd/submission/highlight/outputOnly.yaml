@@ -1,0 +1,6 @@
+filetype: txt
+
+detect:
+    filename: "\\.txt$"
+
+rules:

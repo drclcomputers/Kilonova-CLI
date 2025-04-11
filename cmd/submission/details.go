@@ -7,6 +7,7 @@ package submission
 
 import (
 	"bytes"
+	"embed"
 	b64 "encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -24,6 +25,9 @@ import (
 	"github.com/fatih/color"
 	"github.com/zyedidia/highlight"
 )
+
+//go:embed highlight/*.yaml
+var highlightDir embed.FS
 
 func downloadSource(submissionId, code string) {
 	homedir, err := os.Getwd()
@@ -128,8 +132,8 @@ func printTemplateSubmission(details SubmissionDetails, formattedTime string, co
 }
 
 func formatCodeOutput(code string, lang string) string {
-	if len(code) > 500 {
-		code = code[:500] + "...\n"
+	if len(code) > 600 {
+		code = code[:600] + "...\n"
 	}
 
 	// More syntax files: https://github.com/zyedidia/highlight
