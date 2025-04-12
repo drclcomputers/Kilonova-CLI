@@ -6,7 +6,6 @@
 package submission
 
 import (
-	"embed"
 	"encoding/json"
 	"fmt"
 	"kncli/internal"
@@ -14,10 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
-// /go:embed highlight/*.yaml
-var highlightDir embed.FS
-
-var shouldDownload = false
+var shouldDownload bool = false
 
 func init() {
 	SubmissionCmd.AddCommand(PrintSubmissionsCmd)
