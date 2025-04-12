@@ -7,9 +7,8 @@ package problems
 
 import (
 	"fmt"
+	"kncli/internal"
 	"os"
-
-	utility "kncli/cmd/utility"
 
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
@@ -17,12 +16,12 @@ import (
 
 var GetAssetsCmd = &cobra.Command{
 	Use:   "assets [Problem ID]",
-	Short: "Download the assets for a problem.",
+	Short: "Download the assets for a problem. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
-		action := func() { GetAssets(args[0]) }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			utility.LogError(err)
+		action := func() { _ = GetAssets(args[0]) }
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
+			internal.LogError(err)
 			return
 		}
 	},
@@ -46,17 +45,17 @@ func saveToFile(filename string, data []byte) error {
 }
 
 func GetAssets(id string) error {
-	url := fmt.Sprintf(utility.URL_ASSETS, id)
+	url := fmt.Sprintf(internal.URL_ASSETS, id)
 
 	OutputFile := fmt.Sprintf("%s.zip", id)
-	DataToBeWritten, err := utility.MakeGetRequest(url, nil, utility.RequestDownloadZip)
+	DataToBeWritten, err := internal.MakeGetRequest(url, nil, internal.RequestDownloadZip)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error making request: %v", err))
+		internal.LogError(fmt.Errorf("error making request: %v", err))
 		return err
 	}
 
 	if err := saveToFile(OutputFile, DataToBeWritten); err != nil {
-		utility.LogError(fmt.Errorf("error saving file: %v", err))
+		internal.LogError(fmt.Errorf("error saving file: %v", err))
 		return err
 	}
 

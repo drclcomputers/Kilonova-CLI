@@ -7,7 +7,7 @@ package user
 
 import (
 	"fmt"
-	utility "kncli/cmd/utility"
+	utility "kncli/internal"
 
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
@@ -15,17 +15,17 @@ import (
 
 var SettingsCmd = &cobra.Command{
 	Use:   "settings [command] ...",
-	Short: "Modify your account.",
+	Short: "Modify your account. (online)",
 }
 
 var SigninCmd = &cobra.Command{
 	Use:   "signin [username] [password]",
-	Short: "Sign in to your account",
+	Short: "Sign in to your account. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		username, password := loginForm()
 		action := func() { login(username, password) }
-		if err := spinner.New().Title("Logging in...").Action(action).Run(); err != nil {
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 			utility.LogError(err)
 			return
 		}
@@ -34,10 +34,10 @@ var SigninCmd = &cobra.Command{
 
 var LogoutCmd = &cobra.Command{
 	Use:   "logout",
-	Short: "Log out of your account",
+	Short: "Log out of your account. (online)",
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { logout() }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 			utility.LogError(err)
 			return
 		}
@@ -46,7 +46,7 @@ var LogoutCmd = &cobra.Command{
 
 var UserGetDetailsCmd = &cobra.Command{
 	Use:   "user [User ID or me (get self ID)]",
-	Short: "Get details about a user.",
+	Short: "Get details about a user. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		userGetDetails(args[0], "user")
@@ -55,7 +55,7 @@ var UserGetDetailsCmd = &cobra.Command{
 
 var UserSolvedProblemsCmd = &cobra.Command{
 	Use:   "solvedproblems [User ID or me (get self ID)]",
-	Short: "Get list of solved problems by user.",
+	Short: "Get list of solved problems by user. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		userGetSolvedProblems(args[0])
@@ -64,7 +64,7 @@ var UserSolvedProblemsCmd = &cobra.Command{
 
 var ExtendSessionCmd = &cobra.Command{
 	Use:   "extendsession",
-	Short: "Extend the current session for 30 days more.",
+	Short: "Extend the current session for 30 days more. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		extendSession()
@@ -73,7 +73,7 @@ var ExtendSessionCmd = &cobra.Command{
 
 var SetBioCmd = &cobra.Command{
 	Use:   "setbio [bio]",
-	Short: "Set your profile's bio.",
+	Short: "Set your profile's bio. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		setUserBio(args[0])
@@ -82,7 +82,7 @@ var SetBioCmd = &cobra.Command{
 
 var ChangeNameCmd = &cobra.Command{
 	Use:   "changename [new name] [password]",
-	Short: "Change your profile name.",
+	Short: "Change your profile name. (online)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		changeName(args[0], args[1])
@@ -91,7 +91,7 @@ var ChangeNameCmd = &cobra.Command{
 
 var ChangePassCmd = &cobra.Command{
 	Use:   "changepass [old password] [new password]",
-	Short: "Change your account password.",
+	Short: "Change your account password. (online)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		changePass(args[0], args[1])
@@ -100,7 +100,7 @@ var ChangePassCmd = &cobra.Command{
 
 var ResetPassCmd = &cobra.Command{
 	Use:   "resetpass [email]",
-	Short: "Reset password via email when forgotten.",
+	Short: "Reset password via email when forgotten. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		resetPass(args[0])
@@ -109,7 +109,7 @@ var ResetPassCmd = &cobra.Command{
 
 var DeleteUserCmd = &cobra.Command{
 	Use:   "deleteuser",
-	Short: "Delete your Kilonova account. (Currently not working in API V1)",
+	Short: "Delete your Kilonova account. (Currently not working in API V1) (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		//deleteUser()
@@ -118,7 +118,7 @@ var DeleteUserCmd = &cobra.Command{
 
 var ChangeEmailCmd = &cobra.Command{
 	Use:   "changemail [new email] [password]",
-	Short: "Change your account email.",
+	Short: "Change your account email. (online)",
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		changeEmail(args[0], args[1])
@@ -127,7 +127,7 @@ var ChangeEmailCmd = &cobra.Command{
 
 var ResendEmailCmd = &cobra.Command{
 	Use:   "resendemail",
-	Short: "Resend verification mail.",
+	Short: "Resend verification mail. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		resendEmail()
@@ -145,7 +145,7 @@ var AmILoggedInCmd = &cobra.Command{
 
 var AmIAdminCmd = &cobra.Command{
 	Use:   "amiadmin",
-	Short: "Check wether you're an admin.",
+	Short: "Check wether you're an admin. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		fmt.Println(isAdmin("me"))

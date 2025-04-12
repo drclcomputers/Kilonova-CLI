@@ -12,7 +12,7 @@ import (
 	"encoding/json"
 	"fmt"
 	problem "kncli/cmd/problems"
-	utility "kncli/cmd/utility"
+	"kncli/internal"
 	"log"
 	u "net/url"
 	"os"
@@ -32,13 +32,13 @@ var highlightDir embed.FS
 func downloadSource(submissionId, code string) {
 	homedir, err := os.Getwd()
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to get current working directory: %w", err))
+		internal.LogError(fmt.Errorf("failed to get current working directory: %w", err))
 		return
 	}
 
 	downFile := filepath.Join(homedir, "source_"+submissionId+".txt")
 	if err := os.WriteFile(downFile, []byte(code), 0644); err != nil {
-		utility.LogError(fmt.Errorf("failed to write source code to file %q: %w", downFile, err))
+		internal.LogError(fmt.Errorf("failed to write source code to file %q: %w", downFile, err))
 		return
 	}
 
@@ -50,44 +50,44 @@ func printDetailsSubmission(submissionId string) {
 
 	id, err := strconv.Atoi(submissionId)
 	if err != nil {
-		utility.LogError(fmt.Errorf("invalid submission ID %q: %w", submissionId, err))
+		internal.LogError(fmt.Errorf("invalid submission ID %q: %w", submissionId, err))
 		return
 	}
 
-	url := fmt.Sprintf(utility.URL_LATEST_SUBMISSION, id)
+	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, id)
 
 	formData := u.Values{
 		"id": {submissionId},
 	}
 
-	ResponseBody, err := utility.MakeGetRequest(url, bytes.NewBufferString(formData.Encode()), utility.RequestNone)
+	ResponseBody, err := internal.MakeGetRequest(url, bytes.NewBufferString(formData.Encode()), internal.RequestNone)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error fetching submission details: %w", err))
+		internal.LogError(fmt.Errorf("error fetching submission details: %w", err))
 		return
 	}
 
 	if err := json.Unmarshal(ResponseBody, &details); err != nil {
-		utility.LogError(fmt.Errorf("error unmarshalling response: %w", err))
+		internal.LogError(fmt.Errorf("error unmarshalling response: %w", err))
 		return
 	}
 
-	if details.Status != utility.SUCCESS {
-		utility.LogError(fmt.Errorf("submission fetch failed with status: %v", details.Status))
+	if details.Status != internal.SUCCESS {
+		internal.LogError(fmt.Errorf("submission fetch failed with status: %v", details.Status))
 		return
 	}
 
-	formattedTime, err := utility.ParseTime(details.Data.CreatedAt)
+	formattedTime, err := internal.ParseTime(details.Data.CreatedAt)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
 	ProblemID := strconv.Itoa(details.Data.ProblemID)
-	fmt.Println(problem.GetProblemInfo(ProblemID))
+	fmt.Println(problem.GetProblemInfoText(ProblemID))
 
 	code, err := b64.StdEncoding.DecodeString(details.Data.Code)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error decoding source code: %w", err))
+		internal.LogError(fmt.Errorf("error decoding source code: %w", err))
 		return
 	}
 
@@ -95,8 +95,8 @@ func printDetailsSubmission(submissionId string) {
 
 	if shouldDownload {
 		action := func() { downloadSource(submissionId, string(code)) }
-		if err := spinner.New().Title("Waiting for shouldDownload...").Action(action).Run(); err != nil {
-			utility.LogError(fmt.Errorf("error during source code shouldDownload for submission #%s: %w", submissionId, err))
+		if err := spinner.New().Title("Downloading...").Action(action).Run(); err != nil {
+			internal.LogError(fmt.Errorf("error during downloading source code for submission #%s: %w", submissionId, err))
 			return
 		}
 	}
@@ -115,18 +115,18 @@ func printTemplateSubmission(details SubmissionDetails, formattedTime string, co
 		Code:           formatCodeOutput(string(code), details.Data.Language),
 	}
 
-	if submissionData.Code == utility.ERROR {
+	if submissionData.Code == internal.ERROR {
 		submissionData.Code = string(code)
 	}
 
-	tmpl, err := template.New("submissionDetails").Parse(utility.SubmissionTemplate)
+	tmpl, err := template.New("submissionDetails").Parse(internal.SubmissionTemplate)
 	if err != nil {
-		utility.LogError(fmt.Errorf("failed to parse template: %w", err))
+		internal.LogError(fmt.Errorf("failed to parse template: %w", err))
 		return
 	}
 
 	if err := tmpl.Execute(os.Stdout, submissionData); err != nil {
-		utility.LogError(fmt.Errorf("failed to execute template: %w", err))
+		internal.LogError(fmt.Errorf("failed to execute template: %w", err))
 		return
 	}
 }
@@ -140,7 +140,7 @@ func formatCodeOutput(code string, lang string) string {
 	syntaxFile, err := highlightDir.ReadFile("highlight/" + lang + ".yaml")
 	if err != nil {
 		log.Print(fmt.Errorf("no syntax file for lang (%w)", err))
-		return utility.ERROR
+		return internal.ERROR
 	}
 
 	syntaxDef, err := highlight.ParseDef(syntaxFile)

@@ -9,8 +9,8 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	utility "kncli/cmd/utility"
-	"log"
+	"kncli/cmd/database"
+	"kncli/internal"
 	u "net/url"
 	"os"
 	"path/filepath"
@@ -34,42 +34,31 @@ func loginForm() (string, string) {
 	)
 
 	if err := form.Run(); err != nil {
-		utility.LogError(err)
-		return utility.ERROR, utility.ERROR
+		internal.LogError(err)
+		return internal.ERROR, internal.ERROR
 	}
 
 	return username, password
 }
 
-func createLoginToken(response utility.KilonovaResponse) {
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		utility.LogError(err)
-		return
-	}
-	configDir := filepath.Join(homedir, utility.CONFIGFOLDER, utility.KNCLIFOLDER)
-	err = os.MkdirAll(configDir, os.ModePerm)
-	if err != nil {
-		utility.LogError(err)
-		return
-	}
-	tokenFile := filepath.Join(configDir, utility.TOKENFILENAME)
+func createLoginToken(response internal.KilonovaResponse) {
+	tokenFile := filepath.Join(internal.GetConfigDir(), internal.TOKENFILENAME)
 
 	file, err := os.Create(tokenFile)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error creating file: %v", err))
+		internal.LogError(fmt.Errorf("error creating file: %v", err))
 		return
 	}
 	defer file.Close()
 
-	encryptedToken, err := utility.Encrypt(response.Data)
+	encryptedToken, err := internal.Encrypt(response.Data)
 	if err != nil {
-		utility.LogError(fmt.Errorf("error encrypting token: %v", err))
+		internal.LogError(fmt.Errorf("error encrypting token: %v", err))
 		return
 	}
 
 	if err := os.WriteFile(tokenFile, []byte(encryptedToken), 0644); err != nil {
-		utility.LogError(fmt.Errorf("error writing auth token to file: %v", err))
+		internal.LogError(fmt.Errorf("error writing auth token to file: %v", err))
 		return
 	}
 }
@@ -80,77 +69,73 @@ func login(username, password string) {
 		"password": {password},
 	}
 
-	ResponseBody, err := utility.MakePostRequest(utility.URL_LOGIN, bytes.NewBufferString(formData.Encode()), utility.RequestFormGuest)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_LOGIN, bytes.NewBufferString(formData.Encode()), internal.RequestFormGuest)
 	if err != nil {
-		utility.LogError(fmt.Errorf("login failed: %v", err))
+		internal.LogError(fmt.Errorf("login failed: %v", err))
 		return
 	}
 
-	if !bytes.Contains(ResponseBody, []byte(utility.SUCCESS)) {
-		utility.LogError(fmt.Errorf("login failed: invalid credentials"))
+	if !bytes.Contains(ResponseBody, []byte(internal.SUCCESS)) {
+		internal.LogError(fmt.Errorf("login failed: invalid credentials"))
 		return
 	}
 
-	var response utility.KilonovaResponse
+	var response internal.KilonovaResponse
 	if err := json.Unmarshal(ResponseBody, &response); err != nil {
-		utility.LogError(fmt.Errorf("error parsing response: %v", err))
+		internal.LogError(fmt.Errorf("error parsing response: %v", err))
 		return
 	}
 
 	createLoginToken(response)
 
 	fmt.Println("Login successful!")
+
+	if !internal.DBExists() {
+		database.CreateDB()
+	}
 }
 
 // logout
 
 func removeTokenFile() {
-	homedir, err := os.UserHomeDir()
-	if err != nil {
-		utility.LogError(err)
-		return
-	}
-	configDir := filepath.Join(homedir, utility.CONFIGFOLDER, utility.KNCLIFOLDER)
-	tokenFile := filepath.Join(configDir, utility.TOKENFILENAME)
+	tokenFile := filepath.Join(internal.GetConfigDir(), internal.TOKENFILENAME)
 	_ = os.Remove(tokenFile)
 }
 
 func logout() {
 	JSONData := []byte(`{"key": "value"}`)
-	ResponseBody, err := utility.MakePostRequest(utility.URL_LOGOUT, bytes.NewBuffer(JSONData), utility.RequestFormAuth)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_LOGOUT, bytes.NewBuffer(JSONData), internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	if bytes.Contains(ResponseBody, []byte(utility.SUCCESS)) {
+	if bytes.Contains(ResponseBody, []byte(internal.SUCCESS)) {
 		fmt.Println("Logged out successfully!")
 		removeTokenFile()
 	}
-	log.Println("Logout failed: You must be logged in to do this!")
 }
 
 func extendSession() {
-	ResponseBody, err := utility.MakePostRequest(utility.URL_EXTEND_SESSION, nil, utility.RequestFormAuth)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_EXTEND_SESSION, nil, internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var resp utility.KilonovaResponse
+	var resp internal.KilonovaResponse
 	if err := json.Unmarshal(ResponseBody, &resp); err != nil {
-		utility.LogError(fmt.Errorf("error unmarshalling response: %s", err))
+		internal.LogError(fmt.Errorf("error unmarshalling response: %s", err))
 		return
 	}
 
-	if resp.Status == utility.SUCCESS {
-		formattedTime, err := utility.ParseTime(resp.Data)
+	if resp.Status == internal.SUCCESS {
+		formattedTime, err := internal.ParseTime(resp.Data)
 		if err != nil {
-			utility.LogError(fmt.Errorf("error parsing time: %s", err))
+			internal.LogError(fmt.Errorf("error parsing time: %s", err))
 			return
 		}
 		fmt.Println("Your session has been extended until ", formattedTime)
 	}
 	fmt.Println(resp.Data)
-
 }

@@ -9,19 +9,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"fmt"
-	utility "kncli/cmd/utility"
+	"kncli/internal"
 	u "net/url"
 )
 
 func setUserBio(bio string) {
 	payload := map[string]string{"bio": bio}
-	resp, err := utility.PostJSON[utility.KilonovaResponse](utility.URL_SELF_SET_BIO, payload)
+	resp, err := internal.PostJSON[internal.KilonovaResponse](internal.URL_SELF_SET_BIO, payload)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	if resp.Status == utility.SUCCESS {
+	if resp.Status == internal.SUCCESS {
 		fmt.Println("Success! Bio changed!")
 		return
 	}
@@ -34,17 +34,17 @@ func changeName(newName, password string) {
 		"newName":  newName,
 		"password": password,
 	}
-	resp, err := utility.PostJSON[utility.KilonovaResponse](utility.URL_CHANGE_NAME, payload)
+	resp, err := internal.PostJSON[internal.KilonovaResponse](internal.URL_CHANGE_NAME, payload)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	if resp.Status == utility.SUCCESS {
+	if resp.Status == internal.SUCCESS {
 		fmt.Println("Success! Name changed!")
 		return
 	}
-	utility.LogError(fmt.Errorf("failed to change name"))
+	internal.LogError(fmt.Errorf("failed to change name"))
 }
 
 func changePass(oldPass, newPass string) {
@@ -52,18 +52,18 @@ func changePass(oldPass, newPass string) {
 		"old_password": oldPass,
 		"password":     newPass,
 	}
-	resp, err := utility.PostJSON[utility.KilonovaResponse](utility.URL_CHANGE_PASS, payload)
+	resp, err := internal.PostJSON[internal.KilonovaResponse](internal.URL_CHANGE_PASS, payload)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	if resp.Status == utility.SUCCESS {
+	if resp.Status == internal.SUCCESS {
 		fmt.Println("Success! Password changed! You'll need to login again.")
 		logout()
 		return
 	}
-	utility.LogError(fmt.Errorf("failed to change password"))
+	internal.LogError(fmt.Errorf("failed to change password"))
 }
 
 func changeEmail(email, password string) {
@@ -71,27 +71,27 @@ func changeEmail(email, password string) {
 	formData.Set("email", email)
 	formData.Set("password", password)
 
-	ResponseBody, err := utility.MakePostRequest(utility.URL_CHANGE_EMAIL, bytes.NewBufferString(formData.Encode()), utility.RequestFormAuth)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_CHANGE_EMAIL, bytes.NewBufferString(formData.Encode()), internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var res utility.KilonovaResponse
+	var res internal.KilonovaResponse
 	if err := json.Unmarshal(ResponseBody, &res); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	if res.Status == utility.SUCCESS {
+	if res.Status == internal.SUCCESS {
 		fmt.Println("Success! Email changed!")
 		return
 	}
-	utility.LogError(fmt.Errorf("failed to change email"))
+	internal.LogError(fmt.Errorf("failed to change email"))
 }
 
 func resetPass(email string) {
-	if _, loggedIn := utility.ReadToken(); loggedIn {
+	if _, loggedIn := internal.ReadToken(); loggedIn {
 		fmt.Println("You must be logged out to reset your password.")
 		return
 	}
@@ -99,15 +99,15 @@ func resetPass(email string) {
 	form := u.Values{}
 	form.Set("email", email)
 
-	ResponseBody, err := utility.MakePostRequest(utility.URL_CHANGE_PASS, bytes.NewBufferString(form.Encode()), utility.RequestFormAuth)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_CHANGE_PASS, bytes.NewBufferString(form.Encode()), internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var res utility.KilonovaResponse
+	var res internal.KilonovaResponse
 	if err := json.Unmarshal(ResponseBody, &res); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
@@ -115,15 +115,15 @@ func resetPass(email string) {
 }
 
 func resendEmail() {
-	ResponseBody, err := utility.MakePostRequest(utility.URL_RESEND_MAIL, nil, utility.RequestFormAuth)
+	ResponseBody, err := internal.MakePostRequest(internal.URL_RESEND_MAIL, nil, internal.RequestFormAuth)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
-	var res utility.KilonovaResponse
+	var res internal.KilonovaResponse
 	if err := json.Unmarshal(ResponseBody, &res); err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 

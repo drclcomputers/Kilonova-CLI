@@ -8,6 +8,7 @@ package project
 import (
 	"errors"
 	"fmt"
+	"kncli/internal"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -16,14 +17,12 @@ import (
 	problem "kncli/cmd/problems"
 	"kncli/cmd/submission"
 
-	utility "kncli/cmd/utility"
-
 	"github.com/charmbracelet/huh/spinner"
 	"github.com/spf13/cobra"
 )
 
-var codeBlocksProjectFile bool = false
-var cMakeProjectFile bool = false
+var codeBlocksProjectFile = false
+var cMakeProjectFile = false
 
 var InitProjectCmd = &cobra.Command{
 	Use:   "init [Problem ID] [Language]",
@@ -31,8 +30,8 @@ var InitProjectCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { initProject(args[0], args[1]) }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			utility.LogError(err)
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
+			internal.LogError(err)
 			return
 		}
 	},
@@ -64,7 +63,7 @@ func configInteractiveProblem(CurrentWorkingDir, NewFolder string) {
 
 	FilesInCWD, err := os.ReadDir(CurrentWorkingDir)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
@@ -78,9 +77,9 @@ func configInteractiveProblem(CurrentWorkingDir, NewFolder string) {
 
 	HeaderFileContent, err := os.ReadFile(headerFilename)
 	if err != nil {
-		os.Chdir("..")
-		os.Remove(NewFolder)
-		utility.LogError(fmt.Errorf("error reading header file: %v", err))
+		_ = os.Chdir("..")
+		_ = os.Remove(NewFolder)
+		internal.LogError(fmt.Errorf("error reading header file: %v", err))
 		return
 	}
 
@@ -88,27 +87,27 @@ func configInteractiveProblem(CurrentWorkingDir, NewFolder string) {
 
 	CPPFile, err := os.Create("Source.cpp")
 	if err != nil {
-		os.Chdir("..")
-		os.Remove(NewFolder)
-		utility.LogError(fmt.Errorf("error creating .cpp file: %v", err))
+		_ = os.Chdir("..")
+		_ = os.Remove(NewFolder)
+		internal.LogError(fmt.Errorf("error creating .cpp file: %v", err))
 		return
 	}
 	defer CPPFile.Close()
 
-	CPPFile.WriteString(`#include<iostream>
+	_, _ = CPPFile.WriteString(`#include<iostream>
 #include "myfunc.h"
 
 `)
 	for _, decl := range funcDecls {
-		fmt.Fprintf(CPPFile, "%s {\n\n}\n\n", decl)
+		_, _ = fmt.Fprintf(CPPFile, "%s {\n\n}\n\n", decl)
 	}
-	CPPFile.WriteString("int main() {\n\treturn 0;\n}")
+	_, _ = CPPFile.WriteString("int main() {\n\treturn 0;\n}")
 }
 
 func rollbackAndLog(folder string, err error) {
 	_ = os.Chdir("..")
 	_ = os.Remove(folder)
-	utility.LogError(err)
+	internal.LogError(err)
 }
 
 func keyboardIOProblem(statement, lang, newFolder string) {
@@ -122,10 +121,10 @@ func keyboardIOProblem(statement, lang, newFolder string) {
 	switch {
 	case isCppLang(lang):
 		filename = "Source.cpp"
-		content = utility.HelloWorldPrograms[10]
+		content = internal.HelloWorldPrograms[10]
 	case lang == "c":
 		filename = "Source.c"
-		content = utility.HelloWorldPrograms[9]
+		content = internal.HelloWorldPrograms[9]
 	default:
 		return
 	}
@@ -138,31 +137,31 @@ func keyboardIOProblem(statement, lang, newFolder string) {
 	}
 	defer file.Close()
 
-	file.WriteString(content)
+	_, _ = file.WriteString(content)
 }
 
 func GetCWDandCreateNewFolder(problemID, ProgrammingLanguage string) (string, string) {
 	CurrentWorkingDir, err := os.Getwd()
 	if err != nil {
-		utility.LogError(fmt.Errorf("could not get current working directory! error: %v", err))
-		return utility.ERROR, utility.ERROR
+		internal.LogError(fmt.Errorf("could not get current working directory! error: %v", err))
+		return internal.ERROR, internal.ERROR
 	}
 
 	NewFolder := filepath.Join(CurrentWorkingDir, fmt.Sprintf("Problem_%s_Proj_%s", problemID, ProgrammingLanguage))
 	if err := os.MkdirAll(NewFolder, os.ModePerm); err != nil {
-		utility.LogError(fmt.Errorf("could not create project directory! error: %v", err))
-		return utility.ERROR, utility.ERROR
+		internal.LogError(fmt.Errorf("could not create project directory! error: %v", err))
+		return internal.ERROR, internal.ERROR
 	}
 
 	if err := os.Chdir(NewFolder); err != nil {
-		utility.LogError(fmt.Errorf("could not change directory to project dir! error: %v", err))
-		return utility.ERROR, utility.ERROR
+		internal.LogError(fmt.Errorf("could not change directory to project dir! error: %v", err))
+		return internal.ERROR, internal.ERROR
 	}
 
 	CurrentWorkingDir, err = os.Getwd()
 	if err != nil {
-		utility.LogError(fmt.Errorf("could not get current working directory! error: %v", err))
-		return utility.ERROR, utility.ERROR
+		internal.LogError(fmt.Errorf("could not get current working directory! error: %v", err))
+		return internal.ERROR, internal.ERROR
 	}
 
 	return CurrentWorkingDir, NewFolder
@@ -170,9 +169,9 @@ func GetCWDandCreateNewFolder(problemID, ProgrammingLanguage string) (string, st
 }
 
 func AuxiliaryModifications(problemID, ProgrammingLanguage, CurrentWorkingDir, NewFolder string) {
-	problemName, err := utility.GetAProblemName(problemID)
+	problemName, err := internal.GetAProblemName(problemID)
 	if err != nil {
-		utility.LogError(err)
+		internal.LogError(err)
 		return
 	}
 
@@ -182,10 +181,10 @@ func AuxiliaryModifications(problemID, ProgrammingLanguage, CurrentWorkingDir, N
 	}
 
 	ProblemStatement, err := problem.PrintStatement(problemID, "RO", 2)
-	if err != nil && err.Error() == utility.NOLANG {
+	if err != nil && err.Error() == internal.NOLANG {
 		ProblemStatement, err = problem.PrintStatement(problemID, "EN", 2)
 		if err != nil {
-			utility.LogError(fmt.Errorf("error fetching problem statement: %v", err))
+			internal.LogError(fmt.Errorf("error fetching problem statement: %v", err))
 			return
 		}
 	}
@@ -205,24 +204,24 @@ func initProject(problemID, ProgrammingLanguage string) {
 	CurrentWorkingDir, NewFolder := GetCWDandCreateNewFolder(problemID, ProgrammingLanguage)
 
 	if !isLanguageSupported(problemID, ProgrammingLanguage) {
-		os.Chdir("..")
-		os.Remove(NewFolder)
-		utility.LogError(errors.New("problem is not available in the selected language"))
+		_ = os.Chdir("..")
+		_ = os.Remove(NewFolder)
+		internal.LogError(errors.New("problem is not available in the selected language"))
 		return
 	}
 
-	problem.GetAssets(problemID)
+	_ = problem.GetAssets(problemID)
 
 	archiveFilename := fmt.Sprintf("%s.zip", problemID)
 	unzipedDir := problemID
 	if err := unzip(archiveFilename, unzipedDir); err != nil {
-		utility.LogError(fmt.Errorf("error unzipping file: %v", err))
+		internal.LogError(fmt.Errorf("error unzipping file: %v", err))
 		return
 	}
 
 	_ = os.Remove(archiveFilename)
 
-	moveFiles(CurrentWorkingDir)
+	_ = moveFiles(CurrentWorkingDir)
 
 	AuxiliaryModifications(problemID, ProgrammingLanguage, CurrentWorkingDir, NewFolder)
 }
@@ -230,7 +229,7 @@ func initProject(problemID, ProgrammingLanguage string) {
 func isLanguageSupported(problemID, ProgrammingLanguage string) bool {
 	CurrentWorkingDir, err := os.Getwd()
 	if err != nil {
-		utility.LogError(fmt.Errorf("could not get current working directory: %v", err))
+		internal.LogError(fmt.Errorf("could not get current working directory: %v", err))
 		return false
 	}
 

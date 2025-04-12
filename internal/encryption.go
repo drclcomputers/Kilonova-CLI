@@ -1,4 +1,4 @@
-package utility
+package internal
 
 import (
 	"bytes"
@@ -48,6 +48,7 @@ func Encrypt(text string) (string, error) {
 }
 
 func Decrypt(encrypted string) (string, error) {
+
 	data, err := base64.StdEncoding.DecodeString(encrypted)
 	if err != nil {
 		return "", err

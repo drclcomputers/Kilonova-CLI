@@ -7,7 +7,7 @@ package submission
 
 import (
 	"fmt"
-	utility "kncli/cmd/utility"
+	utility "kncli/internal"
 	"strconv"
 
 	"github.com/spf13/cobra"
@@ -15,7 +15,7 @@ import (
 
 var UploadCodeCmd = &cobra.Command{
 	Use:   "submit [ID] [LANGUAGE] [FILENAME] [Contest ID (optional)]",
-	Short: "Submit solution to problem.",
+	Short: "Submit solution to problem. (online)",
 	Args:  cobra.MinimumNArgs(3),
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) == 3 {
@@ -28,7 +28,7 @@ var UploadCodeCmd = &cobra.Command{
 
 var CheckLangsCmd = &cobra.Command{
 	Use:   "langs [ID]",
-	Short: "View available languages for solutions.",
+	Short: "View available languages for solutions. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		CheckLanguages(args[0], 1)
@@ -37,12 +37,12 @@ var CheckLangsCmd = &cobra.Command{
 
 var SubmissionCmd = &cobra.Command{
 	Use:   "submission [command] ...",
-	Short: "View details about submissions.",
+	Short: "View details about submissions. (online)",
 }
 
 var PrintSubmissionsCmd = &cobra.Command{
 	Use:   "list [Problem ID or all (all problems)] [User ID, me (personal submissions), all (all users)] [1st page] [last page]",
-	Short: "View sent submissions to a problem.",
+	Short: "View sent submissions to a problem. (online)",
 	Args:  cobra.ExactArgs(4),
 	Run: func(cmd *cobra.Command, args []string) {
 		FirstPage, err := strconv.Atoi(args[2])
@@ -63,7 +63,7 @@ var PrintSubmissionsCmd = &cobra.Command{
 
 var PrintSubmissionInfoCmd = &cobra.Command{
 	Use:   "info [Submission ID]",
-	Short: "View a detailed description of a sent submission.",
+	Short: "View a detailed description of a sent submission. (online)",
 	Args:  cobra.ExactArgs(1),
 	Run: func(cmd *cobra.Command, args []string) {
 		printDetailsSubmission(args[0])

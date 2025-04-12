@@ -3,7 +3,7 @@
 // This work is licensed under the terms of the MIT license.
 // For a copy, see <https://opensource.org/licenses/MIT>.
 
-package utility
+package internal
 
 type RequestType int
 
@@ -63,7 +63,8 @@ const (
 	URL_ASSETS         = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
 	URL_CONTEST_ASSETS = "https://kilonova.ro/assets/contest/%s/leaderboard.csv"
 
-	UserAgent = "KilonovaCLIClient/0.2"
+	Version   = "v0.3.2"
+	UserAgent = "KilonovaCLIClient/" + Version
 
 	XMLCBPStruct = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_project_file>
@@ -141,12 +142,11 @@ Credits: {{.Credits}}
 	RequestDownloadZip               // 4
 	RequestInfo                      // 5
 	RequestMultipartForm             // 6
+	RequestDatabase                  // 7
 
-	// Colors
 	RED   = "\033[31m"
 	WHITE = "\033[0m"
 
-	// Others
 	BOOLTRUE  = "true"
 	BOOLFALSE = "false"
 	NOLANG    = "nolang"
@@ -258,6 +258,7 @@ var ReplacementsRegex = []string{
 const (
 	CONFIGFOLDER     = ".config"
 	KNCLIFOLDER      = "kncli"
-	TOKENFILENAME    = "token"
+	TOKENFILENAME    = "token.kn"
 	PROBLEMSDATABASE = "problems.db"
+	LASTREFRESHDB    = "lastrefresh.kn"
 )
