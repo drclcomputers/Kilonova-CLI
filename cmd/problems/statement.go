@@ -184,9 +184,6 @@ func GetStatementOnline(ID, language string, useCase int) string {
 }
 
 func GetStatementLocal(ID string) string {
-	if !internal.DBExists() {
-		internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
-	}
 
 	db := internal.DBOpen()
 	defer db.Close()
@@ -204,6 +201,10 @@ func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - P
 	if Online {
 		statement = GetStatementOnline(ID, language, 1)
 	} else {
+		if !internal.DBExists() {
+			internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
+		}
+
 		if internal.RefreshOrNotDB() {
 			defer fmt.Println("Warning: You should refresh the database using 'database refresh' to get more problems.")
 		}
