@@ -17,7 +17,7 @@ To install Kilonova-CLI, ensure you have [Go 1.24.1](https://golang.org/dl/) ins
 git clone https://github.com/drclcomputers/Kilonova-CLI
 cd Kilonova-CLI
 go build
-./kilocli
+./kncli
 ```
 
 
@@ -28,7 +28,7 @@ This command will download and build the Kilonova-CLI.
 
 Once installed, you can use Kilonova-CLI to interact with the Kilonova platform. For detailed instructions on available commands and their usage, please run:
 ```sh
-./kilocli help
+./kncli help
 ```
 
 ## Contributing
