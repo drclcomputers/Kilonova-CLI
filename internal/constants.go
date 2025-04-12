@@ -63,7 +63,8 @@ const (
 	URL_ASSETS         = "https://kilonova.ro/assets/problem/%s/problemArchive?tests=true&attachments=true&private_attachments=false&details=true&tags=true&editors=true&submissions=false&all_submissions=false"
 	URL_CONTEST_ASSETS = "https://kilonova.ro/assets/contest/%s/leaderboard.csv"
 
-	UserAgent = "KilonovaCLIClient/0.3"
+	Version   = "v0.3.2"
+	UserAgent = "KilonovaCLIClient/" + Version
 
 	XMLCBPStruct = `<?xml version="1.0" encoding="UTF-8" standalone="yes" ?>
 <CodeBlocks_project_file>
