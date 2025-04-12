@@ -159,18 +159,18 @@ ON CONFLICT (id) DO NOTHING;`
 	if !internal.FileExists(internal.LASTREFRESHDB) {
 		_, err := os.Create(filePath)
 		if err != nil {
-			//internal.LogError(err)
+			internal.LogError(err)
 		}
 	}
 
 	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
 	if err != nil {
-		//internal.LogError(err)
+		internal.LogError(err)
 	}
 
 	_, err = file.WriteString(currentTime.Format(layout))
 	if err != nil {
-		//internal.LogError(err)
+		internal.LogError(err)
 	}
 
 	fmt.Println("Database refreshed successfully.")
