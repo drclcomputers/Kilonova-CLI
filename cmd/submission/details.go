@@ -91,8 +91,8 @@ func printDetailsSubmission(submissionId string) {
 
 	if shouldDownload {
 		action := func() { downloadSource(submissionId, string(code)) }
-		if err := spinner.New().Title("Waiting for shouldDownload...").Action(action).Run(); err != nil {
-			internal.LogError(fmt.Errorf("error during source code shouldDownload for submission #%s: %w", submissionId, err))
+		if err := spinner.New().Title("Downloading...").Action(action).Run(); err != nil {
+			internal.LogError(fmt.Errorf("error during downloading source code for submission #%s: %w", submissionId, err))
 			return
 		}
 	}

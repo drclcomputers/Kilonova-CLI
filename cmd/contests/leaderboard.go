@@ -104,8 +104,8 @@ func leaderboard(contestID string) {
 
 	if shouldDownload {
 		action := func() { downloadLeaderboard(contestID) }
-		if err := spinner.New().Title("Waiting for shouldDownload...").Action(action).Run(); err != nil {
-			internal.LogError(fmt.Errorf("error during source code shouldDownload for submission #%s: %w", contestID, err))
+		if err := spinner.New().Title("Downloading...").Action(action).Run(); err != nil {
+			internal.LogError(err)
 			return
 		}
 	}

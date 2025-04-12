@@ -141,6 +141,7 @@ Credits: {{.Credits}}
 	RequestDownloadZip               // 4
 	RequestInfo                      // 5
 	RequestMultipartForm             // 6
+	RequestDatabase                  // 7
 
 	RED   = "\033[31m"
 	WHITE = "\033[0m"

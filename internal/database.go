@@ -10,8 +10,7 @@ import (
 
 func RefreshOrNotDB() bool {
 	currentTime := time.Now()
-	configDir := GetConfigDir()
-	filePath := path.Join(configDir, LASTREFRESHDB)
+	filePath := path.Join(GetConfigDir(), LASTREFRESHDB)
 	layout := time.RFC3339
 
 	if !FileExists(LASTREFRESHDB) {
@@ -80,4 +79,20 @@ func CountProblemsDB() int {
 	DBClose(db)
 
 	return count
+}
+
+func ProblemExistsDB(ID string) bool {
+	db := DBOpen()
+	defer db.Close()
+	query := `SELECT EXISTS(SELECT 1 FROM problems WHERE CAST(id as TEXT) LIKE ?);`
+	var exists bool
+	err := db.QueryRow(query, ID).Scan(&exists)
+	if err != nil {
+		LogError(err)
+	}
+
+	if exists {
+		return true
+	}
+	return false
 }

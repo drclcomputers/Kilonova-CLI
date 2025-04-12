@@ -16,8 +16,10 @@ import (
 	"kncli/cmd/problems"
 	"kncli/internal"
 	"os"
+	"path"
 	"path/filepath"
 	"strconv"
+	"time"
 )
 
 var DatabaseCmd = &cobra.Command{
@@ -31,7 +33,7 @@ var CreateDBCmd = &cobra.Command{
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
 		action := func() { CreateDB() }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 			internal.LogError(err)
 			return
 		}
@@ -52,9 +54,9 @@ var RefreshDBCmd = &cobra.Command{
 	Short: "Refreshes the problem database. (online)",
 	Args:  cobra.ExactArgs(0),
 	Run: func(cmd *cobra.Command, args []string) {
-		action := func() { CreateDB() }
-		if err := spinner.New().Title("Waiting ...").Action(action).Run(); err != nil {
-			refreshDB()
+		action := func() { refreshDB() }
+		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
+			internal.LogError(err)
 			return
 		}
 	},
@@ -95,17 +97,20 @@ func deleteDB() {
 	if !internal.DBExists() {
 		fmt.Println(`Database file does not exist.`)
 	}
+
+	lastrefresh := filepath.Join(internal.GetConfigDir(), internal.LASTREFRESHDB)
+	_ = os.Remove(lastrefresh)
+
 	dbFile := filepath.Join(internal.GetConfigDir(), internal.PROBLEMSDATABASE)
-	err := os.Remove(dbFile)
-	if err != nil {
-		internal.LogError(err)
-	}
+	_ = os.Remove(dbFile)
+
 	println("Database deleted successfully.")
 }
 
 func refreshDB() {
 	if !internal.DBExists() {
-		fmt.Println(`Database file does not exist.`)
+		fmt.Println(`Database file does not exist. Create it using 'database create'.`)
+		return
 	}
 
 	url := fmt.Sprintf(internal.URL_PROBLEM, "get")
@@ -117,7 +122,7 @@ func refreshDB() {
 	db := internal.DBOpen()
 
 	for _, problem := range data.Data {
-		query := `SELECT EXISTS(SELECT 1 FROM problems WHERE id = $1)`
+		query := `SELECT EXISTS(SELECT 1 FROM problems WHERE id = ?)`
 		var exists bool
 		err := db.QueryRow(query, problem.Id).Scan(&exists)
 		if err != nil {
@@ -128,9 +133,9 @@ func refreshDB() {
 			continue
 		}
 
-		statement := problems.GetStatementOnline(strconv.Itoa(problem.Id), "RO")
+		statement := problems.GetStatementOnline(strconv.Itoa(problem.Id), "RO", 2)
 		if statement == internal.NOLANG {
-			statement = problems.GetStatementOnline(strconv.Itoa(problem.Id), "EN")
+			statement = problems.GetStatementOnline(strconv.Itoa(problem.Id), "EN", 2)
 		}
 
 		insertSQL := `INSERT INTO problems (id, name, sourcesize, timelimit, memorylimit, credits, statement)
@@ -146,6 +151,27 @@ ON CONFLICT (id) DO NOTHING;`
 	}
 
 	internal.DBClose(db)
+
+	currentTime := time.Now()
+	filePath := path.Join(internal.GetConfigDir(), internal.LASTREFRESHDB)
+	layout := time.RFC3339
+
+	if !internal.FileExists(internal.LASTREFRESHDB) {
+		_, err := os.Create(filePath)
+		if err != nil {
+			//internal.LogError(err)
+		}
+	}
+
+	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
+	if err != nil {
+		//internal.LogError(err)
+	}
+
+	_, err = file.WriteString(currentTime.Format(layout))
+	if err != nil {
+		//internal.LogError(err)
+	}
 
 	fmt.Println("Database refreshed successfully.")
 }

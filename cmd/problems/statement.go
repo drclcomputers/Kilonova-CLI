@@ -155,13 +155,18 @@ func getStatementURL(id, lang string) (string, error) {
 	}
 }
 
-func GetStatementOnline(ID, language string) string {
+func GetStatementOnline(ID, language string, useCase int) string {
 	url, err := getStatementURL(ID, language)
 	if err != nil {
 		internal.LogError(fmt.Errorf("error fetching URL: %w", err))
 	}
 
-	ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
+	var ResponseBody []byte
+	if useCase == 1 {
+		ResponseBody, err = internal.MakeGetRequest(url, nil, internal.RequestNone)
+	} else if useCase == 2 {
+		ResponseBody, err = internal.MakeGetRequest(url, nil, internal.RequestDatabase)
+	}
 	if err != nil {
 		internal.LogError(fmt.Errorf("error fetching statement: %w", err))
 	}
@@ -197,11 +202,16 @@ func GetStatementLocal(ID string) string {
 func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - Print, 2 - Return text
 	var statement string
 	if Online {
-		statement = GetStatementOnline(ID, language)
+		statement = GetStatementOnline(ID, language, 1)
 	} else {
 		if internal.RefreshOrNotDB() {
 			defer fmt.Println("Warning: You should refresh the database using 'database refresh' to get more problems.")
 		}
+		if !internal.ProblemExistsDB(ID) {
+			fmt.Println("No problem with this ID found in the database.")
+			return "", nil
+		}
+
 		statement = GetStatementLocal(ID)
 	}
 

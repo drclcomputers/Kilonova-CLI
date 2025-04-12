@@ -111,7 +111,7 @@ func GetConfigDir() string {
 		return "error"
 	}
 	configDir := filepath.Join(homedir, CONFIGFOLDER, KNCLIFOLDER)
-	err = os.MkdirAll(configDir, os.ModePerm)
+	err = os.MkdirAll(configDir, 0755)
 	if err != nil {
 		LogError(err)
 		return "error"

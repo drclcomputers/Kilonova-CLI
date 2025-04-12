@@ -75,8 +75,10 @@ func MakeRequest(method, url string, ResponseBody io.Reader, reqType RequestType
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if strings.Contains(string(data), "not") {
-			return []byte("notfound"), nil
+		if reqType == RequestDatabase {
+			if strings.Contains(string(data), "not") {
+				return []byte("notfound"), nil
+			}
 		}
 		var res RawKilonovaResponse
 		if err := json.Unmarshal(data, &res); err != nil {
