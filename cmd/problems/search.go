@@ -185,6 +185,10 @@ func searchProblemsLocal(ProblemName string) {
 		defer fmt.Println("Warning: You should refresh the database using 'database refresh' to get more problems.")
 	}
 
+	if ProblemName == "all" {
+		ProblemName = ""
+	}
+
 	db := internal.DBOpen()
 	defer internal.DBClose(db)
 
