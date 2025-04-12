@@ -181,6 +181,10 @@ func searchProblemsLocal(ProblemName string) {
 		internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
 	}
 
+	if internal.RefreshOrNotDB() {
+		defer fmt.Println("Warning: You should refresh the database using 'database refresh' to get more problems.")
+	}
+
 	db := internal.DBOpen()
 	defer internal.DBClose(db)
 

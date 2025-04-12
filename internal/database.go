@@ -3,15 +3,53 @@ package internal
 import (
 	"database/sql"
 	"os"
+	"path"
 	"path/filepath"
+	"time"
 )
 
-func DBExists() bool {
-	DBFilename := filepath.Join(GetConfigDir(), PROBLEMSDATABASE)
-	if _, err := os.Stat(DBFilename); err == nil {
+func RefreshOrNotDB() bool {
+	currentTime := time.Now()
+	configDir := GetConfigDir()
+	filePath := path.Join(configDir, LASTREFRESHDB)
+	layout := time.RFC3339
+
+	if !FileExists(LASTREFRESHDB) {
+		file, err := os.Create(filePath)
+		if err != nil {
+			LogError(err)
+			return false
+		}
+		defer file.Close()
+
+		_, err = file.WriteString(currentTime.Format(layout))
+		if err != nil {
+			LogError(err)
+			return false
+		}
+	}
+
+	data, err := os.ReadFile(filePath)
+	if err != nil {
+		LogError(err)
+		return false
+	}
+
+	parsedTime, err := time.Parse(layout, string(data))
+	if err != nil {
+		LogError(err)
+		return false
+	}
+
+	if currentTime.Sub(parsedTime) > 7*24*time.Hour {
 		return true
 	}
+
 	return false
+}
+
+func DBExists() bool {
+	return FileExists(PROBLEMSDATABASE)
 }
 
 func DBOpen() *sql.DB {

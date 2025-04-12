@@ -256,6 +256,7 @@ var ReplacementsRegex = []string{
 const (
 	CONFIGFOLDER     = ".config"
 	KNCLIFOLDER      = "kncli"
-	TOKENFILENAME    = "token"
+	TOKENFILENAME    = "token.kn"
 	PROBLEMSDATABASE = "problems.db"
+	LASTREFRESHDB    = "lastrefresh.kn"
 )

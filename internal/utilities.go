@@ -29,6 +29,14 @@ func ProblemExists(ID string) bool {
 	return true
 }
 
+func FileExists(filename string) bool {
+	FileName := filepath.Join(GetConfigDir(), filename)
+	if _, err := os.Stat(FileName); err == nil {
+		return true
+	}
+	return false
+}
+
 func DecodeBase64Text(EncodedText string) (string, error) {
 	DecodedText, err := b64.StdEncoding.DecodeString(EncodedText)
 	if err != nil {

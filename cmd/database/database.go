@@ -10,6 +10,7 @@ package database
 
 import (
 	"fmt"
+	"github.com/charmbracelet/huh/spinner"
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/spf13/cobra"
 	"kncli/cmd/problems"
@@ -17,8 +18,6 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
-
-	"github.com/charmbracelet/huh/spinner"
 )
 
 var DatabaseCmd = &cobra.Command{
