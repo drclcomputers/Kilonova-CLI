@@ -13,7 +13,6 @@ import (
 	"fmt"
 	problem "kncli/cmd/problems"
 	"kncli/internal"
-	"log"
 	u "net/url"
 	"os"
 	"path/filepath"
@@ -139,7 +138,6 @@ func formatCodeOutput(code string, lang string) string {
 	// More syntax files: https://github.com/zyedidia/highlight
 	syntaxFile, err := highlightDir.ReadFile("highlight/" + lang + ".yaml")
 	if err != nil {
-		log.Print(fmt.Errorf("no syntax file for lang (%w)", err))
 		return internal.ERROR
 	}
 
