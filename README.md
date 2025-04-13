@@ -1,56 +1,95 @@
-# Kilonova-CLI
+# 🚀 Kilonova-CLI
 
-Kilonova-CLI is a command-line interface (CLI) client designed for interacting with the [Kilonova](https://kilonova.ro/) competitive programming platform. It enables users to view statements, search for problems, submit solutions, and retrieve submission results directly from the terminal.
+A sleek command-line client for the [Kilonova](https://kilonova.ro) competitive programming platform, letting you search problems, submit solutions, and track results — all from your terminal. ✨
 
-## Features
+---
 
-- **User Authentication**: Log in to your Kilonova account securely from the CLI.
-- **Problem Search**: Find programming problems by keywords or IDs.
-- **Solution Submission**: Submit your code solutions to Kilonova problems.
-- **Submission Status**: Check the results and status of your submissions.
+## 📦 Project Structure
 
-## Installation
+```
+.
+├── cmd/              # CLI command definitions (using Cobra)
+├── internal/         # General Functions 
+├── main.go           # Application entry point
+├── go.mod            # Module dependencies
+├── go.sum            # Dependency checksums
+├── .gitignore        # Git ignored files
+├── LICENSE           # MIT License
+└── README.md         # This file
+```
 
-To install Kilonova-CLI, ensure you have [Go 1.24.1](https://golang.org/dl/) installed on your system. Then, run:
+---
 
-```sh
+## ✨ Features
+
+- 🔐 **User Authentication** — Securely log into your Kilonova account.
+- 🔍 **Problem Search** — Find problems by keywords or IDs.
+- 📤 **Solution Submission** — Submit your code directly via CLI.
+- 📈 **Submission Info** — Retrieve and display your submission results.
+- 🎨 **Pretty Terminal UI** — Thanks to `glamour`, `bubbletea`, and `lipgloss`.
+
+---
+
+## 📥 Installation
+
+> **Requires Go 1.24.1+**
+
+Clone and build the project:
+```bash
 git clone https://github.com/drclcomputers/Kilonova-CLI
 cd Kilonova-CLI
 go build
 ./kncli
 ```
 
+---
 
-This command will download and build the Kilonova-CLI.
+## 🛠️ Usage
 
-
-## Usage
-
-Once installed, you can use Kilonova-CLI to interact with the Kilonova platform. For detailed instructions on available commands and their usage, please run:
-```sh
+List all available commands:
+```bash
 ./kncli help
 ```
 
-## Contributing
-
-Contributions to Kilonova-CLI are welcome! If you find a bug or have a feature request, please open an issue on the [GitHub repository](https://github.com/drclcomputers/Kilonova-CLI). For code contributions, fork the repository and submit a pull request with your changes.
-
-## License
-
-Kilonova-CLI is licensed under the [MIT License](LICENSE).
-
----
-
-## Used projects
-
-[Cobra](https://github.com/spf13/cobra)
-
-[Glamour](https://github.com/charmbracelet/glamour)
-
-[Bubbletea](https://github.com/charmbracelet/bubbletea)
-
-[Lipgloss](https://github.com/charmbracelet/lipgloss)
+Examples:
+```bash
+./kilocli signin      # Log in to Kilonova
+./kilocli search      # Search for problems
+./kilocli submit      # Submit a solution
+./kilocli submission  # Check submission status
+```
 
 ---
 
-*Note: Kilonova-CLI is an independent project and is not officially affiliated with the Kilonova platform.*
+## 📚 Dependencies
+
+- [Cobra](https://github.com/spf13/cobra) 🐍 — CLI framework
+- [Bubbletea](https://github.com/charmbracelet/bubbletea) 🫖 — Terminal UI toolkit
+- [Glamour](https://github.com/charmbracelet/glamour) ✨ — Markdown rendering in terminal
+- [Lipgloss](https://github.com/charmbracelet/lipgloss) 💅 — Style definitions for Bubbletea apps
+
+---
+
+## 👨‍💻 Contributing
+
+Contributions welcome! 💙  
+- Fork this repo  
+- Create a feature branch  
+- Commit your changes  
+- Open a pull request 🚀
+
+Or report bugs/suggestions via [issues](https://github.com/drclcomputers/Kilonova-CLI/issues).
+
+---
+
+## 📄 License
+
+This project is licensed under the MIT License. See `LICENSE` for details.
+
+---
+
+## 📌 Notes
+
+- This is an independent open-source project and not officially affiliated with Kilonova.
+- Built entirely in **Go** 💙.
+
