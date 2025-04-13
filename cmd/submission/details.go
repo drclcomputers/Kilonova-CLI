@@ -47,13 +47,7 @@ func downloadSource(submissionId, code string) {
 func printDetailsSubmission(submissionId string) {
 	var details SubmissionDetails
 
-	id, err := strconv.Atoi(submissionId)
-	if err != nil {
-		internal.LogError(fmt.Errorf("invalid submission ID %q: %w", submissionId, err))
-		return
-	}
-
-	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, id)
+	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, submissionId)
 
 	formData := u.Values{
 		"id": {submissionId},
@@ -111,6 +105,7 @@ func printTemplateSubmission(details SubmissionDetails, formattedTime string, co
 		MaxTime:        details.Data.MaxTime,
 		CompileError:   details.Data.CompileError,
 		CompileMessage: details.Data.CompileMessage,
+		ContestID:      details.Data.ContestID,
 		Code:           formatCodeOutput(string(code), details.Data.Language),
 	}
 

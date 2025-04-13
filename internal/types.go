@@ -8,6 +8,7 @@ package internal
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/charmbracelet/bubbles/table"
 	"github.com/charmbracelet/bubbles/viewport"
@@ -55,6 +56,9 @@ type ProblemList struct {
 
 type TextModel struct {
 	viewport viewport.Model
+	height   int
+	width    int
+	text     string
 }
 
 func (m *TextModel) Init() tea.Cmd {
@@ -68,11 +72,18 @@ func (m *TextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch key := msg.String(); key {
 		case "q", "esc":
 			return m, tea.Quit
-		case "up", "k":
+		case "up", "o":
 			m.viewport.LineUp(1)
-		case "down", "j":
+		case "down", "k":
 			m.viewport.LineDown(1)
 		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
+		m.viewport.Width = msg.Width - 4
+		m.viewport.Height = msg.Height - 5
+
+		m.viewport.SetContent(m.text)
 	}
 	return m, cmd
 }
@@ -86,13 +97,18 @@ func (m *TextModel) View() string {
 func NewTextModel(text string) *TextModel {
 	vp := viewport.New(80, 25)
 	vp.SetContent(text)
-	return &TextModel{viewport: vp}
+	return &TextModel{
+		viewport: vp,
+		text:     text,
+	}
 }
 
 // TABLE MODEL
 
 type Model struct {
-	table table.Model
+	table  table.Model
+	width  int
+	height int
 }
 
 func (m *Model) Init() tea.Cmd {
@@ -107,6 +123,9 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "q", "esc":
 			return m, tea.Quit
 		}
+	case tea.WindowSizeMsg:
+		m.width = msg.Width
+		m.height = msg.Height
 	}
 
 	m.table, cmd = m.table.Update(msg)
@@ -114,7 +133,18 @@ func (m *Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 }
 
 func (m *Model) View() string {
-	footer := "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
+	tableView := m.table.View()
+
+	tableLines := strings.Count(tableView, "\n") + 1
+
+	spaceLines := m.height - tableLines - 2
+	if spaceLines < 0 {
+		spaceLines = 0
+	}
+
+	spacing := strings.Repeat("\n", spaceLines)
+
+	footer := spacing + "\n(Use ↑/↓ to navigate, 'q' to quit)"
 	return lipgloss.NewStyle().Margin(1, 2).Render(m.table.View()) + footer
 }
 
@@ -129,7 +159,9 @@ var ChosenProblem = ""
 var GlobalRows []table.Row
 
 type TableSearch struct {
-	table table.Model
+	table  table.Model
+	height int
+	width  int
 }
 
 func (TableModel TableSearch) Init() tea.Cmd {
@@ -147,6 +179,9 @@ func (TableModel TableSearch) Update(Message tea.Msg) (tea.Model, tea.Cmd) {
 		case "enter":
 			return TableModel.HandleSelection()
 		}
+	case tea.WindowSizeMsg:
+		TableModel.width = Message.Width
+		TableModel.height = Message.Height
 	}
 
 	var Command tea.Cmd
@@ -164,7 +199,19 @@ func (TableModel TableSearch) HandleSelection() (tea.Model, tea.Cmd) {
 }
 
 func (TableModel TableSearch) View() string {
-	return lipgloss.NewStyle().Margin(1, 2).Render(TableModel.table.View()) + "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
+	tableView := TableModel.table.View()
+
+	tableLines := strings.Count(tableView, "\n") + 1
+
+	spaceLines := TableModel.height - tableLines - 2
+	if spaceLines < 0 {
+		spaceLines = 0
+	}
+
+	spacing := strings.Repeat("\n", spaceLines)
+
+	footer := spacing + "\n(Use ↑/↓ to navigate, 'q' to quit, 'enter' to get the statement)"
+	return lipgloss.NewStyle().Margin(1, 2).Render(TableModel.table.View()) + footer
 }
 
 func NewSearchTable(table table.Model) *TableSearch {
@@ -178,7 +225,6 @@ func CreateTable(Columns []table.Column, Rows []table.Row) table.Model {
 		table.WithColumns(Columns),
 		table.WithRows(Rows),
 		table.WithFocused(true),
-		table.WithHeight(20),
 	)
 	t.SetStyles(table.DefaultStyles())
 	return t
@@ -186,8 +232,8 @@ func CreateTable(Columns []table.Column, Rows []table.Row) table.Model {
 
 func RenderTable(columns []table.Column, rows []table.Row, TableType int) {
 	t := CreateTable(columns, rows)
-	program := tea.NewProgram(&Model{table: t}, tea.WithAltScreen()) // 1 - Normal Table
-	if TableType == 2 {                                              // 2 - Search Table
+	program := tea.NewProgram(NewTable(t), tea.WithAltScreen()) // 1 - Normal Table
+	if TableType == 2 {                                         // 2 - Search Table
 		program = tea.NewProgram(NewSearchTable(t), tea.WithAltScreen())
 	}
 	if _, err := program.Run(); err != nil {

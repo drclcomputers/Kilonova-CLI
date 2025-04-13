@@ -32,7 +32,7 @@ const (
 	URL_LANGS_PB = API_URL + "problem/%s/languages"
 
 	URL_SUBMIT                     = API_URL + "submissions/submit"
-	URL_LATEST_SUBMISSION          = API_URL + "submissions/getByID?id=%d"
+	URL_LATEST_SUBMISSION          = API_URL + "submissions/getByID?id=%s"
 	URL_SUBMISSION_LIST            = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&problem_id=%s&user_id=%s"
 	URL_SUBMISSION_LIST_NO_FILTER  = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id"
 	URL_SUBMISSION_LIST_NO_PROBLEM = API_URL + "submissions/get?ascending=false&limit=50&offset=%d&ordering=id&user_id=%s"
@@ -113,6 +113,7 @@ add_executable(%s Source.cpp)`
 Created: {{.CreatedAt}}
 Language: {{.Language}}
 Score: {{.Score}}
+Contest ID: {{.ContestID}} 
 
 Max memory: {{.MaxMemory}}KB
 Max time: {{.MaxTime}}s
@@ -123,12 +124,12 @@ Code:
 {{.Code}}
 `
 
-	TemplatePattern = `Name: {{.Name}}
-ID: #{{.ID}}
-Time Limit: {{.TimeLimit}}s
-Memory Limit: {{.MemoryLimit}}KB
-Source Size: {{.SourceSize}}KB
-Credits: {{.Credits}}
+	TemplatePattern = `Name: {{.Name}} | 
+ID: #{{.ID}} | 
+Time Limit: {{.TimeLimit}}s | 
+Memory Limit: {{.MemoryLimit}}KB | 
+Source Size: {{.SourceSize}}KB | 
+Credits: {{.Credits}} | 
 `
 
 	CMakeFilename = "CMakeLists.txt"
@@ -233,6 +234,7 @@ var Replacements = map[string]string{
 	"$":             "",
 	` \ `:           "",
 	`\ldots`:        "...",
+	`\dots`:         "...",
 	`\leq`:          "≤",
 	`\geq`:          "≥",
 	`\el`:           "",
@@ -245,6 +247,8 @@ var Replacements = map[string]string{
 	`\displaystyle`: "",
 	`\times`:        "x",
 	`\%`:            "%",
+	`\min`:          "min",
+	`\max`:          "max",
 }
 
 var ReplacementsRegex = []string{

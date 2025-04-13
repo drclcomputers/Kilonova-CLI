@@ -13,6 +13,7 @@ import (
 	"kncli/internal"
 	"mime/multipart"
 	"os"
+	"strconv"
 
 	"github.com/charmbracelet/huh/spinner"
 )
@@ -106,7 +107,7 @@ func handleSubmissionError(ResponseBody []byte) {
 }
 
 func checkSubmissionStatus(submissionID int) {
-	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, submissionID)
+	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, strconv.Itoa(submissionID))
 
 	action := func() {
 		var dataLatestSubmit LatestSubmission

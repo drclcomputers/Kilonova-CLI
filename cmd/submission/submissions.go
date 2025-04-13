@@ -13,7 +13,7 @@ import (
 	"github.com/charmbracelet/bubbles/table"
 )
 
-var shouldDownload bool = false
+var shouldDownload = false
 
 func init() {
 	SubmissionCmd.AddCommand(PrintSubmissionsCmd)

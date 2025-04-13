@@ -69,3 +69,12 @@ var PrintSubmissionInfoCmd = &cobra.Command{
 		printDetailsSubmission(args[0])
 	},
 }
+
+var ShowTestsSubmissionCmd = &cobra.Command{
+	Use:   "tests [Submission ID]",
+	Short: "View all tests for a submission. (online)",
+	Args:  cobra.ExactArgs(1),
+	Run: func(cmd *cobra.Command, args []string) {
+		ShowTestsSubmission(args[0])
+	},
+}

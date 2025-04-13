@@ -5,18 +5,36 @@
 
 package submission
 
+type Subtest struct {
+	ID         int     `json:"id"`
+	Done       bool    `json:"done"`
+	Skipped    bool    `json:"skipped"`
+	Verdict    string  `json:"verdict"`
+	Time       float64 `json:"time"`
+	Memory     int     `json:"memory"`
+	Percentage int     `json:"percentage"`
+	TestID     int     `json:"test_id"`
+	Score      int     `json:"score"`
+}
 type SubmissionData struct {
-	UserID         int     `json:"user_id"`
-	ProblemID      int     `json:"problem_id"`
-	Id             int     `json:"id"`
-	CreatedAt      string  `json:"created_at"`
-	Language       string  `json:"language"`
-	Score          float64 `json:"score"`
-	MaxMemory      int     `json:"max_memory"`
-	MaxTime        float64 `json:"max_time"`
-	CompileError   bool    `json:"compile_error"`
-	CompileMessage string  `json:"compile_message"`
-	Code           string  `json:"code,omitempty"`
+	Id             int       `json:"id"`
+	CreatedAt      string    `json:"created_at"`
+	UserID         int       `json:"user_id"`
+	ProblemID      int       `json:"problem_id"`
+	Language       string    `json:"language"`
+	CompileError   bool      `json:"compile_error"`
+	ContestID      *int      `json:"contest_id"`
+	MaxTime        float64   `json:"max_time"`
+	MaxMemory      int       `json:"max_memory"`
+	Score          float64   `json:"score"`
+	CompileMessage string    `json:"compile_message"`
+	Code           string    `json:"code"`
+	Subtests       []Subtest `json:"subtests"`
+}
+
+type SubmissionDetails struct {
+	Status string         `json:"status"`
+	Data   SubmissionData `json:"data"`
 }
 
 type SubmissionList struct {
@@ -24,11 +42,6 @@ type SubmissionList struct {
 		Submissions []SubmissionData `json:"submissions"`
 		Count       int              `json:"count"`
 	} `json:"data"`
-}
-
-type SubmissionDetails struct {
-	Status string         `json:"status"`
-	Data   SubmissionData `json:"data"`
 }
 
 type Submit struct {
@@ -65,5 +78,6 @@ type SubmissionDetailsTemplate struct {
 	MaxTime        float64
 	CompileError   bool
 	CompileMessage string
+	ContestID      *int
 	Code           string
 }

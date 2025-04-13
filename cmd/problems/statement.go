@@ -235,6 +235,7 @@ func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - P
 	}
 
 	DecodedText := formatText(text)
+
 	if useCase == 2 {
 		return DecodedText, nil
 	}
