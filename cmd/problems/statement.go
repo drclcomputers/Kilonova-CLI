@@ -30,10 +30,12 @@ var PrintStatementCmd = &cobra.Command{
 	Run: func(cmd *cobra.Command, args []string) {
 		if len(args) > 1 {
 			fmt.Println("Starting network services for online searching ...")
-			_, _ = PrintStatement(args[0], args[1], 1)
+			_, _ = PrintStatement(args[0], args[1], true, 1)
 			fmt.Println("Disabling network services for online searching ...")
+		} else if Online {
+			_, _ = PrintStatement(args[0], "NO_LANG_CHOSEN", true, 1)
 		} else {
-			_, _ = PrintStatement(args[0], "NO_LANG_CHOSEN", 1)
+			_, _ = PrintStatement(args[0], "", false, 1)
 		}
 	},
 }
@@ -72,16 +74,12 @@ func GetProblemInfoStructOnline(ID string) (internal.ProblemInfo, error) {
 	url := fmt.Sprintf(internal.URL_PROBLEM, ID)
 	ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 	if err != nil {
-		internal.LogError(err)
+		return internal.ProblemInfo{}, fmt.Errorf("failed to fetch problem %s: %w", ID, err)
 	}
 
 	var ProblemInfo internal.ProblemInfo
 	if err := json.Unmarshal(ResponseBody, &ProblemInfo); err != nil {
-		var res internal.RawKilonovaResponse
-		if err := json.Unmarshal(ResponseBody, &res); err != nil {
-			internal.LogError(err)
-		}
-		return internal.ProblemInfo{}, fmt.Errorf("no")
+		return internal.ProblemInfo{}, fmt.Errorf("failed to parse problem info: %w", err)
 	}
 
 	return ProblemInfo, nil
@@ -91,20 +89,28 @@ func GetProblemInfoStructLocal(ID string) (internal.ProblemInfo, error) {
 	db := internal.DBOpen()
 	defer db.Close()
 
-	query := "SELECT id, name, timelimit, memorylimit, sourcesize, credits FROM problems\nWHERE CAST(id AS TEXT) LIKE $1;"
+	query := "SELECT id, name, timelimit, memorylimit, sourcesize, credits FROM problems\nWHERE CAST(id AS TEXT) LIKE ?;"
 
 	var data internal.Problem
-	_ = db.QueryRow(query, ID).Scan(&data.Id, &data.Name, &data.Time, &data.MemoryLimit, &data.SourceSize, &data.SourceCredits)
+	err := db.QueryRow(query, ID).Scan(&data.Id, &data.Name, &data.Time, &data.MemoryLimit, &data.SourceSize, &data.SourceCredits)
+	if err != nil {
+		return internal.ProblemInfo{}, fmt.Errorf("problem %s not found in database: %w", ID, err)
+	}
 
 	return internal.ProblemInfo{Data: data}, nil
 }
 
-func GetProblemInfoText(ID string) string {
+func GetProblemInfoText(ID string, online bool) string {
 	var ProblemInfo internal.ProblemInfo
-	if Online {
-		ProblemInfo, _ = GetProblemInfoStructOnline(ID)
+	var err error
+	if online {
+		ProblemInfo, err = GetProblemInfoStructOnline(ID)
 	} else {
-		ProblemInfo, _ = GetProblemInfoStructLocal(ID)
+		ProblemInfo, err = GetProblemInfoStructLocal(ID)
+	}
+	if err != nil {
+		internal.LogError(fmt.Errorf("failed to get problem info: %w", err))
+		return ""
 	}
 
 	data := struct {
@@ -158,7 +164,7 @@ func getStatementURL(id, lang string) (string, error) {
 func GetStatementOnline(ID, language string, useCase int) string {
 	url, err := getStatementURL(ID, language)
 	if err != nil {
-		internal.LogError(fmt.Errorf("error fetching URL: %w", err))
+		return internal.NOLANG
 	}
 
 	var ResponseBody []byte
@@ -168,10 +174,11 @@ func GetStatementOnline(ID, language string, useCase int) string {
 		ResponseBody, err = internal.MakeGetRequest(url, nil, internal.RequestDatabase)
 	}
 	if err != nil {
-		internal.LogError(fmt.Errorf("error fetching statement: %w", err))
+		internal.LogError(fmt.Errorf("error fetching statement for problem %s: %w", ID, err))
+		return internal.NOLANG
 	}
 
-	if strings.Contains(string(ResponseBody), "notfound") {
+	if bytes.Contains(ResponseBody, []byte("notfound")) {
 		return internal.NOLANG
 	}
 
@@ -184,21 +191,21 @@ func GetStatementOnline(ID, language string, useCase int) string {
 }
 
 func GetStatementLocal(ID string) string {
-
 	db := internal.DBOpen()
 	defer db.Close()
 
-	query := "SELECT statement FROM problems\nWHERE CAST(id AS TEXT) LIKE $1;"
+	query := "SELECT statement FROM problems\nWHERE CAST(id AS TEXT) LIKE ?;"
 
 	var statement string
-	_ = db.QueryRow(query, ID).Scan(&statement)
-
+	if err := db.QueryRow(query, ID).Scan(&statement); err != nil {
+		return ""
+	}
 	return statement
 }
 
-func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - Print, 2 - Return text
+func PrintStatement(ID, language string, online bool, useCase int) (string, error) { // 1 - Print, 2 - Return text
 	var statement string
-	if Online {
+	if online {
 		statement = GetStatementOnline(ID, language, 1)
 	} else {
 		if !internal.DBExists() {
@@ -217,21 +224,18 @@ func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - P
 	}
 
 	if statement == internal.NOLANG {
-		if language == "RO" {
-			internal.LogError(fmt.Errorf("statement not available in Romanian. Try again in English"))
-		} else if language == "EN" {
-			internal.LogError(fmt.Errorf("statement not available in English. Try again in Romanian"))
-		} else {
-			internal.LogError(fmt.Errorf("unknoun language chosen. Must be either RO or EN"))
+		err := fmt.Errorf("statement not available in %s", language)
+		if useCase == 2 {
+			return "", errors.New(internal.NOLANG)
 		}
+		internal.LogError(err)
+		return "", err
 	}
 
 	text, err := internal.DecodeBase64Text(statement)
 	if err != nil {
-		if useCase == 2 {
-			internal.LogError(errors.New(internal.NOLANG))
-		}
 		internal.LogError(fmt.Errorf("failed to decode base64 text: %w", err))
+		return "", err
 	}
 
 	DecodedText := formatText(text)
@@ -240,7 +244,7 @@ func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - P
 		return DecodedText, nil
 	}
 
-	Rendered, err := renderStatement(ID, DecodedText)
+	Rendered, err := renderStatement(ID, DecodedText, online)
 	if err != nil {
 		return "error", fmt.Errorf("failed to render statement: %w", err)
 	}
@@ -254,8 +258,8 @@ func PrintStatement(ID, language string, useCase int) (string, error) { // 1 - P
 
 // Others
 
-func renderStatement(ID, DecodedText string) (string, error) {
-	ProblemInfoText := GetProblemInfoText(ID)
+func renderStatement(ID, DecodedText string, online bool) (string, error) {
+	ProblemInfoText := GetProblemInfoText(ID, online)
 	if ProblemInfoText == "" {
 		return "", errors.New("failed to retrieve problem information")
 	}

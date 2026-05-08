@@ -7,9 +7,11 @@ package internal
 
 import (
 	"database/sql"
+	"fmt"
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 	"time"
 )
 
@@ -56,48 +58,62 @@ func DBExists() bool {
 	return FileExists(PROBLEMSDATABASE)
 }
 
+var (
+	dbInstance *sql.DB
+	dbMutex    sync.Mutex
+)
+
 func DBOpen() *sql.DB {
+	dbMutex.Lock()
+	defer dbMutex.Unlock()
+
+	if dbInstance != nil {
+		return dbInstance
+	}
 	DBFilename := filepath.Join(GetConfigDir(), PROBLEMSDATABASE)
 	db, err := sql.Open("sqlite3", DBFilename)
 	if err != nil {
-		LogError(err)
+		LogError(fmt.Errorf("database open failed: %w", err))
 		return nil
 	}
-	return db
+	dbInstance = db
+	return dbInstance
 }
 
-func DBClose(db *sql.DB) {
-	_ = db.Close()
+func DBClose() {
+	dbMutex.Lock()
+	defer dbMutex.Unlock()
+
+	if dbInstance != nil {
+		_ = dbInstance.Close()
+		dbInstance = nil
+	}
 }
 
 func CountProblemsDB() int {
 	db := DBOpen()
-
-	countSQL := `SELECT COUNT(*) FROM problems;`
-
-	var count int
-	err := db.QueryRow(countSQL).Scan(&count)
-	if err != nil {
-		LogError(err)
+	if db == nil {
+		return 0
 	}
 
-	DBClose(db)
+	var count int
+	err := db.QueryRow(`SELECT COUNT(*) FROM problems;`).Scan(&count)
+	if err != nil {
+		LogError(fmt.Errorf("count query failed: %w", err))
+	}
 
 	return count
 }
 
 func ProblemExistsDB(ID string) bool {
 	db := DBOpen()
-	defer db.Close()
-	query := `SELECT EXISTS(SELECT 1 FROM problems WHERE CAST(id as TEXT) LIKE ?);`
+	if db == nil {
+		return false
+	}
 	var exists bool
-	err := db.QueryRow(query, ID).Scan(&exists)
+	err := db.QueryRow(`SELECT EXISTS(SELECT 1 FROM problems WHERE CAST(id as TEXT) = ?);`, ID).Scan(&exists)
 	if err != nil {
-		LogError(err)
+		LogError(fmt.Errorf("existence query failed: %w", err))
 	}
-
-	if exists {
-		return true
-	}
-	return false
+	return exists
 }

@@ -85,7 +85,7 @@ statement TEXT
 		internal.LogError(err)
 	}
 
-	internal.DBClose(db)
+	internal.DBClose()
 
 	println("Database created successfully.")
 
@@ -114,9 +114,10 @@ func refreshDB() {
 	}
 
 	url := fmt.Sprintf(internal.URL_PROBLEM, "get")
-	data, err := internal.PostJSON[internal.ProblemList](url, nil)
+	data, err := internal.PostJSON[internal.ProblemList](url, struct{}{})
 	if err != nil {
 		internal.LogError(err)
+		return
 	}
 
 	db := internal.DBOpen()
@@ -149,8 +150,8 @@ ON CONFLICT (id) DO NOTHING;`
 		}
 
 	}
-
-	internal.DBClose(db)
+	
+	internal.DBClose()
 
 	currentTime := time.Now()
 	filePath := path.Join(internal.GetConfigDir(), internal.LASTREFRESHDB)

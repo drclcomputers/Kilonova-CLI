@@ -6,10 +6,10 @@
 package user
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"kncli/internal"
-	"net/http"
 
 	"github.com/PuerkitoBio/goquery"
 	"github.com/charmbracelet/bubbles/table"
@@ -17,14 +17,13 @@ import (
 
 // get info about user
 func getUserBio(UserName string) string {
-	res, err := http.Get(fmt.Sprintf("https://kilonova.ro/profile/%s", UserName))
+	res, err := internal.MakeGetRequest(fmt.Sprintf("https://kilonova.ro/profile/%s", UserName), nil, internal.RequestFormGuest)
 	if err != nil {
 		internal.LogError(err)
 		return internal.ERROR
 	}
-	defer res.Body.Close()
 
-	doc, err := goquery.NewDocumentFromReader(res.Body)
+	doc, err := goquery.NewDocumentFromReader(bytes.NewReader(res))
 	if err != nil {
 		internal.LogError(err)
 		return internal.ERROR

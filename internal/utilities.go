@@ -18,15 +18,22 @@ import (
 	"path/filepath"
 )
 
+// LogError prints an error to stderr. Unlike log.Fatalf, it does NOT terminate
+// the program, allowing graceful error handling in CLI commands.
+func LogError(err error) {
+	log.Printf("%s%s%s", RED, err.Error(), WHITE)
+}
+
 // Utility Functions
 
 func ProblemExists(ID string) bool {
 	url := fmt.Sprintf(URL_PROBLEM, ID)
-	body, _ := MakeGetRequest(url, nil, RequestNone)
-	if string(body) == "notfound" {
+	body, err := MakeGetRequest(url, nil, RequestNone)
+	if err != nil {
+		LogError(fmt.Errorf("error checking if problem exists: %w", err))
 		return false
 	}
-	return true
+	return !bytes.Contains(body, []byte("notfound"))
 }
 
 func FileExists(filename string) bool {
@@ -138,8 +145,4 @@ func ReadToken() (string, bool) {
 	return decryptText, true
 }
 
-// Log Error Function
 
-func LogError(err error) {
-	log.Fatalf("%s%s%s", RED, err.Error(), WHITE)
-}

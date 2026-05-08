@@ -72,10 +72,18 @@ func (m *TextModel) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		switch key := msg.String(); key {
 		case "q", "esc":
 			return m, tea.Quit
-		case "up", "o":
+		case "up", "k":
 			m.viewport.LineUp(1)
-		case "down", "k":
+		case "down", "j":
 			m.viewport.LineDown(1)
+		case "pgup":
+			m.viewport.ViewUp()
+		case "pgdown":
+			m.viewport.ViewDown()
+		case "home":
+			m.viewport.GotoTop()
+		case "end":
+			m.viewport.GotoBottom()
 		}
 	case tea.WindowSizeMsg:
 		m.width = msg.Width
@@ -239,4 +247,6 @@ func RenderTable(columns []table.Column, rows []table.Row, TableType int) {
 	if _, err := program.Run(); err != nil {
 		LogError(fmt.Errorf("error running program: %w", err))
 	}
+	// Clear alternate screen artifacts
+	fmt.Print("\033[?1049l")
 }

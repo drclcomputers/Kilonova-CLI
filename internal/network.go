@@ -11,11 +11,20 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"strings"
+	"time"
 )
 
-func CreateRequest(req http.Request, reqType RequestType, contentType ...string) *http.Request {
+var httpClient = &http.Client{
+	Timeout: 30 * time.Second,
+	Transport: &http.Transport{
+		MaxIdleConns:        100,
+		IdleConnTimeout:     90 * time.Second,
+		TLSHandshakeTimeout: 10 * time.Second,
+		ExpectContinueTimeout: 1 * time.Second,
+	},
+}
 
+func CreateRequest(req *http.Request, reqType RequestType, contentType ...string) error {
 	req.Header.Set("User-Agent", UserAgent)
 	token, hasToken := ReadToken()
 
@@ -25,21 +34,22 @@ func CreateRequest(req http.Request, reqType RequestType, contentType ...string)
 	case RequestJSON:
 		req.Header.Set("Content-Type", "application/json")
 	case RequestDownloadZip, RequestInfo:
-		req.Header.Set("Content-Type", "application/zip")
 		req.Header.Set("Accept", "application/zip")
 		if reqType == RequestDownloadZip {
 			fmt.Println("Trying to obtain archive...")
+			if hasToken {
+				cookie := &http.Cookie{
+					Name:  "kn-sessionid",
+					Value: token,
+				}
+				req.AddCookie(cookie)
+			}
 		}
-		cookie := &http.Cookie{
-			Name:  "kn-sessionid",
-			Value: token,
-		}
-		req.AddCookie(cookie)
 	case RequestMultipartForm:
 		if len(contentType) > 0 {
 			req.Header.Set("Content-Type", contentType[0])
 		} else {
-			LogError(fmt.Errorf("missing content type for multipart form request"))
+			return fmt.Errorf("missing content type for multipart form request")
 		}
 	default:
 	}
@@ -47,21 +57,21 @@ func CreateRequest(req http.Request, reqType RequestType, contentType ...string)
 	if hasToken {
 		req.Header.Set("Authorization", token)
 	} else if reqType == RequestFormAuth || reqType == RequestDownloadZip {
-		LogError(fmt.Errorf("you must be authenticated to do this"))
+		return fmt.Errorf("you must be authenticated to do this")
 	}
-
-	return &req
+	return nil
 }
 
 func MakeRequest(method, url string, ResponseBody io.Reader, reqType RequestType, contentType ...string) ([]byte, error) {
 	req, err := http.NewRequest(method, url, ResponseBody)
 	if err != nil {
-		LogError(fmt.Errorf("error creating request: %w", err))
+		return nil, fmt.Errorf("error creating request: %w", err)
+	}
+	if err := CreateRequest(req, reqType, contentType...); err != nil {
 		return nil, err
 	}
-	req = CreateRequest(*req, reqType, contentType...)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := httpClient.Do(req)
 	if err != nil {
 		LogError(fmt.Errorf("error making request: %w", err))
 		return nil, err
@@ -70,21 +80,19 @@ func MakeRequest(method, url string, ResponseBody io.Reader, reqType RequestType
 
 	data, err := io.ReadAll(resp.Body)
 	if err != nil {
-		LogError(fmt.Errorf("error reading response ResponseBody: %w", err))
+		LogError(fmt.Errorf("error reading response: %w", err))
 		return nil, err
 	}
 
 	if resp.StatusCode != http.StatusOK {
-		if reqType == RequestDatabase {
-			if strings.Contains(string(data), "not") {
-				return []byte("notfound"), nil
-			}
+		if reqType == RequestDatabase && bytes.Contains(data, []byte("notfound")) {
+			return []byte("notfound"), nil
 		}
 		var res RawKilonovaResponse
 		if err := json.Unmarshal(data, &res); err != nil {
-			LogError(err)
+			return nil, fmt.Errorf("api error (HTTP %d): %s", resp.StatusCode, string(data))
 		}
-		LogError(fmt.Errorf("error: %s", string(res.Data)))
+		return nil, fmt.Errorf("api error (HTTP %d): %s", resp.StatusCode, string(res.Data))
 	}
 
 	return data, nil

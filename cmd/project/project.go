@@ -180,9 +180,9 @@ func AuxiliaryModifications(problemID, ProgrammingLanguage, CurrentWorkingDir, N
 		return
 	}
 
-	ProblemStatement, err := problem.PrintStatement(problemID, "RO", 2)
+	ProblemStatement, err := problem.PrintStatement(problemID, "RO", true, 2)
 	if err != nil && err.Error() == internal.NOLANG {
-		ProblemStatement, err = problem.PrintStatement(problemID, "EN", 2)
+		ProblemStatement, err = problem.PrintStatement(problemID, "EN", true, 2)
 		if err != nil {
 			internal.LogError(fmt.Errorf("error fetching problem statement: %v", err))
 			return
@@ -210,7 +210,10 @@ func initProject(problemID, ProgrammingLanguage string) {
 		return
 	}
 
-	_ = problem.GetAssets(problemID)
+	if err := problem.GetAssets(problemID); err != nil {
+		internal.LogError(fmt.Errorf("error downloading assets: %v", err))
+		return
+	}
 
 	archiveFilename := fmt.Sprintf("%s.zip", problemID)
 	unzipedDir := problemID
@@ -221,7 +224,10 @@ func initProject(problemID, ProgrammingLanguage string) {
 
 	_ = os.Remove(archiveFilename)
 
-	_ = moveFiles(CurrentWorkingDir)
+	// Move files from extracted subdirectory into the project root
+	extractedDir := filepath.Join(CurrentWorkingDir, unzipedDir)
+	_ = moveFiles(extractedDir, CurrentWorkingDir)
+	_ = os.RemoveAll(extractedDir)
 
 	AuxiliaryModifications(problemID, ProgrammingLanguage, CurrentWorkingDir, NewFolder)
 }

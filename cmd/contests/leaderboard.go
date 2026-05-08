@@ -38,20 +38,13 @@ func downloadLeaderboard(contestID string) {
 		return
 	}
 
-	homedir, err := os.Getwd()
+	cwd, err := os.Getwd()
 	if err != nil {
 		internal.LogError(fmt.Errorf("failed to get current working directory: %w", err))
 		return
 	}
 
-	downFile := filepath.Join(homedir, "leaderboard_"+contestID+".csv")
-	outFile, err := os.Create(downFile)
-	if err != nil {
-		internal.LogError(fmt.Errorf("failed to create file %q: %w", downFile, err))
-		return
-	}
-	defer outFile.Close()
-
+	downFile := filepath.Join(cwd, "leaderboard_"+contestID+".csv")
 	if err := os.WriteFile(downFile, resp, 0644); err != nil {
 		internal.LogError(fmt.Errorf("failed to write to file %q: %w", downFile, err))
 		return

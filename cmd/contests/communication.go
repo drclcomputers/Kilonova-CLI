@@ -160,7 +160,7 @@ func viewAnnouncementsContest(contestID string) {
 		internal.LogError(err)
 		return
 	}
-	var data ContestData
+	var data ContestAnnouncementData
 	if err = json.Unmarshal(body, &data); err != nil {
 		internal.LogError(err)
 		return

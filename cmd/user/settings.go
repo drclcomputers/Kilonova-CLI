@@ -6,11 +6,8 @@
 package user
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
 	"kncli/internal"
-	u "net/url"
 )
 
 func setUserBio(bio string) {
@@ -67,23 +64,17 @@ func changePass(oldPass, newPass string) {
 }
 
 func changeEmail(email, password string) {
-	formData := u.Values{}
-	formData.Set("email", email)
-	formData.Set("password", password)
-
-	ResponseBody, err := internal.MakePostRequest(internal.URL_CHANGE_EMAIL, bytes.NewBufferString(formData.Encode()), internal.RequestFormAuth)
+	payload := map[string]string{
+		"email":    email,
+		"password": password,
+	}
+	resp, err := internal.PostJSON[internal.KilonovaResponse](internal.URL_CHANGE_EMAIL, payload)
 	if err != nil {
 		internal.LogError(err)
 		return
 	}
 
-	var res internal.KilonovaResponse
-	if err := json.Unmarshal(ResponseBody, &res); err != nil {
-		internal.LogError(err)
-		return
-	}
-
-	if res.Status == internal.SUCCESS {
+	if resp.Status == internal.SUCCESS {
 		fmt.Println("Success! Email changed!")
 		return
 	}
@@ -96,36 +87,30 @@ func resetPass(email string) {
 		return
 	}
 
-	form := u.Values{}
-	form.Set("email", email)
-
-	ResponseBody, err := internal.MakePostRequest(internal.URL_CHANGE_PASS, bytes.NewBufferString(form.Encode()), internal.RequestFormAuth)
+	payload := map[string]string{"email": email}
+	resp, err := internal.PostJSON[internal.KilonovaResponse](internal.URL_RESEND_MAIL, payload)
 	if err != nil {
 		internal.LogError(err)
 		return
 	}
 
-	var res internal.KilonovaResponse
-	if err := json.Unmarshal(ResponseBody, &res); err != nil {
-		internal.LogError(err)
-		return
+	if resp.Status == internal.SUCCESS {
+		fmt.Println("Password reset email sent! Check your inbox.")
+	} else {
+		fmt.Println(resp.Data)
 	}
-
-	fmt.Println(res.Data)
 }
 
 func resendEmail() {
-	ResponseBody, err := internal.MakePostRequest(internal.URL_RESEND_MAIL, nil, internal.RequestFormAuth)
+	resp, err := internal.PostJSON[internal.KilonovaResponse](internal.URL_RESEND_MAIL, nil)
 	if err != nil {
 		internal.LogError(err)
 		return
 	}
 
-	var res internal.KilonovaResponse
-	if err := json.Unmarshal(ResponseBody, &res); err != nil {
-		internal.LogError(err)
-		return
+	if resp.Status == internal.SUCCESS {
+		fmt.Println("Verification email resent! Check your inbox.")
+	} else {
+		fmt.Println(resp.Data)
 	}
-
-	fmt.Println(res.Data)
 }

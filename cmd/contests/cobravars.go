@@ -121,7 +121,7 @@ var deleteAnnouncementContestCmd = &cobra.Command{
 }
 
 var updateProblemsContestCmd = &cobra.Command{
-	Use:   "update [problem_1] [problem_2] ... [problem_n]",
+	Use:   "updatepb [Contest ID] [problem_1] [problem_2] ... [problem_n]",
 	Short: "Update the problems in your contest.",
 	Args:  cobra.MinimumNArgs(2),
 	Run: func(cmd *cobra.Command, args []string) {
