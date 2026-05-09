@@ -93,7 +93,7 @@ Return the 10 most relevant problem IDs as JSON array [id1, id2, ...]:`, query, 
 	var matchedIDs []int
 	if err := json.Unmarshal([]byte(result), &matchedIDs); err != nil {
 		// Fallback: try to extract numbers manually
-		internal.LogError(fmt.Errorf("Gemini returned invalid format, showing raw results:\n%s", result))
+		internal.LogError(fmt.Errorf("gemini returned invalid format, showing raw results:\n%s", result))
 		return
 	}
 

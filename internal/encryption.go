@@ -6,7 +6,6 @@
 package internal
 
 import (
-	"bytes"
 	"crypto/aes"
 	"crypto/cipher"
 	"crypto/rand"
@@ -16,19 +15,6 @@ import (
 )
 
 var masterKey = []byte("ThIsis32bYteKeyForAES256exAmple!")
-
-func pad(data []byte) []byte {
-	padLen := aes.BlockSize - len(data)%aes.BlockSize
-	return append(data, bytes.Repeat([]byte{byte(padLen)}, padLen)...)
-}
-
-func unpad(data []byte) ([]byte, error) {
-	paddingLen := int(data[len(data)-1])
-	if paddingLen > aes.BlockSize || paddingLen == 0 {
-		return nil, fmt.Errorf("invalid padding")
-	}
-	return data[:len(data)-paddingLen], nil
-}
 
 func Encrypt(text string) (string, error) {
 	plainText := []byte(text)

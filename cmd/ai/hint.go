@@ -83,5 +83,3 @@ Give a Level %d hint for this problem:`, infoText, truncateForGemini(statementTe
 		fmt.Printf("\n💪 Stuck? Try: kncli hint %s --level %d\n", problemID, level+1)
 	}
 }
-
-

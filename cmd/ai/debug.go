@@ -30,15 +30,15 @@ var DebugCmd = &cobra.Command{
 type debugSubmissionData struct {
 	Status string `json:"status"`
 	Data   struct {
-		ID             int    `json:"id"`
-		ProblemID      int    `json:"problem_id"`
-		Language       string `json:"language"`
+		ID             int     `json:"id"`
+		ProblemID      int     `json:"problem_id"`
+		Language       string  `json:"language"`
 		Score          float64 `json:"score"`
-		CompileError   bool   `json:"compile_error"`
-		CompileMessage string `json:"compile_message"`
+		CompileError   bool    `json:"compile_error"`
+		CompileMessage string  `json:"compile_message"`
 		MaxTime        float64 `json:"max_time"`
 		MaxMemory      int     `json:"max_memory"`
-		Code           string `json:"code"`
+		Code           string  `json:"code"`
 		Subtests       []struct {
 			ID         int     `json:"id"`
 			Done       bool    `json:"done"`

@@ -144,5 +144,3 @@ func ReadToken() (string, bool) {
 
 	return decryptText, true
 }
-
-

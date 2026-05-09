@@ -74,7 +74,7 @@ func GeminiGenerate(systemPrompt, userPrompt string) (string, error) {
 		},
 	)
 	if err != nil {
-		return "", fmt.Errorf("Gemini API error: %w", err)
+		return "", fmt.Errorf("gemini API error: %w", err)
 	}
 
 	var result strings.Builder

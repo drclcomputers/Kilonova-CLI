@@ -106,5 +106,3 @@ func isCurrentUserLoggedIn() bool {
 func isAdmin(userId string) bool {
 	return userGetDetails(userId, "isadmin")
 }
-
-
