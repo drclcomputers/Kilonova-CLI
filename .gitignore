@@ -6,3 +6,9 @@ token
 defacut.txt
 .vscode/
 .idea/
+.claude/
+.geminiignore
+CLAUDE.md
+awesome-claude-skills/
+hermes-agent/
+langchain/
