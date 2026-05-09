@@ -19,7 +19,7 @@ import (
 
 const (
 	GeminiModel       = "gemini-3-flash-preview"
-	GeminiModelPro    = "gemini-2.5-pro"
+	GeminiModelPro    = "gemini-3-pro-preview"
 	GeminiAPIKeyEnv   = "GEMINI_API_KEY"
 	GeminiTimeout     = 30 * time.Second
 	GeminiMaxTokens   = 8192
