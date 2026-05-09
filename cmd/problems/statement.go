@@ -87,7 +87,10 @@ func GetProblemInfoStructOnline(ID string) (internal.ProblemInfo, error) {
 
 func GetProblemInfoStructLocal(ID string) (internal.ProblemInfo, error) {
 	db := internal.DBOpen()
-	defer db.Close()
+	if db == nil {
+		return internal.ProblemInfo{}, fmt.Errorf("problem database is not available")
+	}
+	defer internal.DBClose()
 
 	query := "SELECT id, name, timelimit, memorylimit, sourcesize, credits FROM problems\nWHERE CAST(id AS TEXT) LIKE ?;"
 
@@ -162,6 +165,14 @@ func getStatementURL(id, lang string) (string, error) {
 }
 
 func GetStatementOnline(ID, language string, useCase int) string {
+	return getStatementOnline(ID, language, useCase, false)
+}
+
+func GetStatementOnlineQuiet(ID, language string, useCase int) string {
+	return getStatementOnline(ID, language, useCase, true)
+}
+
+func getStatementOnline(ID, language string, useCase int, suppressMissing bool) string {
 	url, err := getStatementURL(ID, language)
 	if err != nil {
 		return internal.NOLANG
@@ -174,7 +185,9 @@ func GetStatementOnline(ID, language string, useCase int) string {
 		ResponseBody, err = internal.MakeGetRequest(url, nil, internal.RequestDatabase)
 	}
 	if err != nil {
-		internal.LogError(fmt.Errorf("error fetching statement for problem %s: %w", ID, err))
+		if !suppressMissing || !isMissingStatementErr(err) {
+			internal.LogError(fmt.Errorf("error fetching statement for problem %s: %w", ID, err))
+		}
 		return internal.NOLANG
 	}
 
@@ -190,9 +203,17 @@ func GetStatementOnline(ID, language string, useCase int) string {
 	return Statement.Data.Data
 }
 
+func isMissingStatementErr(err error) bool {
+	msg := err.Error()
+	return strings.Contains(msg, "attachment does not exist") || strings.Contains(msg, "notfound")
+}
+
 func GetStatementLocal(ID string) string {
 	db := internal.DBOpen()
-	defer db.Close()
+	if db == nil {
+		return ""
+	}
+	defer internal.DBClose()
 
 	query := "SELECT statement FROM problems\nWHERE CAST(id AS TEXT) LIKE ?;"
 
@@ -210,6 +231,7 @@ func PrintStatement(ID, language string, online bool, useCase int) (string, erro
 	} else {
 		if !internal.DBExists() {
 			internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
+			return "", fmt.Errorf("problem database doesn't exist")
 		}
 
 		if internal.RefreshOrNotDB() {

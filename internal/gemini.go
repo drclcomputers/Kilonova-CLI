@@ -21,7 +21,7 @@ const (
 	GeminiModel       = "gemini-3-flash-preview"
 	GeminiModelPro    = "gemini-2.5-pro"
 	GeminiAPIKeyEnv   = "GEMINI_API_KEY"
-	GeminiTimeout     = 60 * time.Second
+	GeminiTimeout     = 30 * time.Second
 	GeminiMaxTokens   = 8192
 	GeminiTemperature = 0.3
 )
@@ -99,6 +99,16 @@ type CacheEntry struct {
 	StatementText string `json:"statement_text"`
 }
 
+type problemInfoResult struct {
+	info ProblemInfo
+	err  error
+}
+
+type statementResult struct {
+	raw []byte
+	err error
+}
+
 // GetProblemContext fetches problem details and statement for Gemini context, utilizing a local cache.
 func GetProblemContext(problemID string) (infoText, statementText string, err error) {
 	home, err := os.UserHomeDir()
@@ -112,50 +122,45 @@ func GetProblemContext(problemID string) (infoText, statementText string, err er
 		}
 	}
 
-	var info ProblemInfo
-	var rawStatement []byte
-	var infoErr, stmtErr error
-
-	// Fetch info and statement in parallel
-	done := make(chan bool, 2)
+	infoCh := make(chan problemInfoResult, 1)
+	statementCh := make(chan statementResult, 1)
 
 	go func() {
 		url := fmt.Sprintf(URL_PROBLEM, problemID)
 		res, err := MakeGetRequest(url, nil, RequestNone)
 		if err != nil {
-			infoErr = fmt.Errorf("failed to fetch problem %s: %w", problemID, err)
-		} else {
-			if err := json.Unmarshal(res, &info); err != nil {
-				infoErr = fmt.Errorf("failed to parse problem info: %w", err)
-			}
+			infoCh <- problemInfoResult{err: fmt.Errorf("failed to fetch problem %s: %w", problemID, err)}
+			return
 		}
-		done <- true
+
+		var info ProblemInfo
+		if err := json.Unmarshal(res, &info); err != nil {
+			infoCh <- problemInfoResult{err: fmt.Errorf("failed to parse problem info: %w", err)}
+			return
+		}
+		infoCh <- problemInfoResult{info: info}
 	}()
 
 	go func() {
 		statementURL := fmt.Sprintf(URL_STATEMENT, problemID, STAT_FILENAME_EN)
 		res, err := MakeGetRequest(statementURL, nil, RequestNone)
 		if err != nil {
-			// Fallback to RU
 			statementURL = fmt.Sprintf(URL_STATEMENT, problemID, STAT_FILENAME_RO)
 			res, err = MakeGetRequest(statementURL, nil, RequestNone)
 			if err != nil {
-				stmtErr = fmt.Errorf("failed to fetch statement (EN/RU) for %s: %w", problemID, err)
+				statementCh <- statementResult{err: fmt.Errorf("failed to fetch statement (EN/RO) for %s: %w", problemID, err)}
+				return
 			}
 		}
-		rawStatement = res
-		stmtErr = err
-		done <- true
+		statementCh <- statementResult{raw: res}
 	}()
 
-	for i := 0; i < 2; i++ {
-		<-done
+	infoResult := <-infoCh
+	statementResult := <-statementCh
+	if infoResult.err != nil {
+		return "", "", infoResult.err
 	}
-
-	if infoErr != nil {
-		return "", "", infoErr
-	}
-	if stmtErr != nil {
+	if statementResult.err != nil {
 		// Non-fatal: provide partial context
 		statementText = "(Statement could not be fetched)"
 	} else {
@@ -167,8 +172,8 @@ func GetProblemContext(problemID string) (infoText, statementText string, err er
 			} `json:"data"`
 		}
 		var stmt StatementResp
-		if err := json.Unmarshal(rawStatement, &stmt); err != nil {
-			statementText = string(rawStatement)
+		if err := json.Unmarshal(statementResult.raw, &stmt); err != nil {
+			statementText = string(statementResult.raw)
 		} else {
 			decoded, err := DecodeBase64Text(stmt.Data.Data)
 			if err != nil {
@@ -180,17 +185,16 @@ func GetProblemContext(problemID string) (infoText, statementText string, err er
 	}
 
 	infoText = fmt.Sprintf("Problem: #%d - %s\nTime Limit: %.2fs | Memory Limit: %dKB | Max Score: %d",
-		info.Data.Id, info.Data.Name, info.Data.Time, info.Data.MemoryLimit, info.Data.MaxScore)
+		infoResult.info.Data.Id, infoResult.info.Data.Name, infoResult.info.Data.Time, infoResult.info.Data.MemoryLimit, infoResult.info.Data.MaxScore)
 
 	// Save to cache
 	if err == nil && home != "" {
 		cachePath := filepath.Join(home, ".kncli", "cache", fmt.Sprintf("%s.json", problemID))
 		entry := CacheEntry{InfoText: infoText, StatementText: statementText}
-		if cachedData, err := json.Marshal(entry); err == nil {
+		if cachedData, err := json.Marshal(entry); err == nil && os.MkdirAll(filepath.Dir(cachePath), 0755) == nil {
 			_ = os.WriteFile(cachePath, cachedData, 0644)
 		}
 	}
 
 	return infoText, statementText, nil
 }
-

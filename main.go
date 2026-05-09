@@ -7,10 +7,14 @@
 // It initializes and executes the command-line interface.
 package main
 
-import "kncli/cmd"
+import (
+	"kncli/cmd"
+	"kncli/internal"
+)
 
 // main is the entry point of the Kilonova CLI application.
 // It calls the Execute function from the cmd package to start the CLI.
 func main() {
+	internal.InitTheme()
 	cmd.Execute()
 }
