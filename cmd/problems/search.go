@@ -145,7 +145,6 @@ func searchProblemsOnline(ProblemName string) {
 }
 
 func chooseLanguageAndShowStatement() {
-	Online = true
 	fmt.Print("\nDo you wish to see the statement in RO(r) or EN(e): ")
 
 	if err := keyboard.Open(); err != nil {
@@ -163,10 +162,10 @@ func chooseLanguageAndShowStatement() {
 
 		switch key {
 		case 'r', 'R':
-			_, _ = PrintStatement(internal.ChosenProblem, "RO", 1)
+			_, _ = PrintStatement(internal.ChosenProblem, "RO", true, 1)
 			return
 		case 'e', 'E':
-			_, _ = PrintStatement(internal.ChosenProblem, "EN", 1)
+			_, _ = PrintStatement(internal.ChosenProblem, "EN", true, 1)
 			return
 		case rune(keyboard.KeyEsc):
 			return
@@ -179,6 +178,7 @@ func chooseLanguageAndShowStatement() {
 func searchProblemsLocal(ProblemName string) {
 	if !internal.DBExists() {
 		internal.LogError(fmt.Errorf("problem database doesn't exist! Signin or run 'database create' "))
+		return
 	}
 
 	if internal.RefreshOrNotDB() {
@@ -190,7 +190,11 @@ func searchProblemsLocal(ProblemName string) {
 	}
 
 	db := internal.DBOpen()
-	defer internal.DBClose(db)
+	if db == nil {
+		internal.LogError(fmt.Errorf("problem database is not available"))
+		return
+	}
+	defer internal.DBClose()
 
 	var Rows []table.Row
 
@@ -238,10 +242,6 @@ func searchProblemsLocal(ProblemName string) {
 	internal.RenderTable(Columns, Rows, 2)
 
 	if internal.ChosenProblem != "" {
-		if onlinesearch {
-			chooseLanguageAndShowStatement()
-			return
-		}
-		_, _ = PrintStatement(internal.ChosenProblem, "null", 1)
+		_, _ = PrintStatement(internal.ChosenProblem, "", false, 1)
 	}
 }

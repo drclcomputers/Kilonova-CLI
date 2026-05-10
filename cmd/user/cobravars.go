@@ -19,11 +19,14 @@ var SettingsCmd = &cobra.Command{
 }
 
 var SigninCmd = &cobra.Command{
-	Use:   "signin [username] [password]",
+	Use:   "signin",
 	Short: "Sign in to your account. (online)",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		username, password := loginForm()
+		username, password, ok := loginForm()
+		if !ok {
+			return
+		}
 		action := func() { login(username, password) }
 		if err := spinner.New().Title("Please wait...").Action(action).Run(); err != nil {
 			utility.LogError(err)
@@ -110,9 +113,10 @@ var ResetPassCmd = &cobra.Command{
 var DeleteUserCmd = &cobra.Command{
 	Use:   "deleteuser",
 	Short: "Delete your Kilonova account. (Currently not working in API V1) (online)",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
-		//deleteUser()
+		fmt.Println("This feature is not yet supported by the Kilonova API V1.")
+		fmt.Println("Please use the web interface at https://kilonova.ro to delete your account.")
 	},
 }
 

@@ -1,6 +1,14 @@
 kncli.exe
 kncli
+kilonova-cli.exe
+kilonova-cli
 token
 defacut.txt
 .vscode/
 .idea/
+.claude/
+.geminiignore
+CLAUDE.md
+awesome-claude-skills/
+hermes-agent/
+langchain/

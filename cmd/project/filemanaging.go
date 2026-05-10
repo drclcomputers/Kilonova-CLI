@@ -38,25 +38,25 @@ func copyFile(src, dest string) error {
 	return err
 }
 
-func moveFiles(RootDir string) error {
-	return filepath.WalkDir(RootDir, func(Path string, EntryReadFromDir os.DirEntry, err error) error {
+func moveFiles(srcDir, destDir string) error {
+	return filepath.WalkDir(srcDir, func(Path string, entry os.DirEntry, err error) error {
 		if err != nil {
 			return err
 		}
 
-		if EntryReadFromDir.IsDir() {
+		if entry.IsDir() {
 			return nil
 		}
 
-		Extension := strings.ToLower(filepath.Ext(EntryReadFromDir.Name()))
-		if Extension == ".md" || Extension == ".pdf" || Extension == ".h" {
-			DestinationPath := filepath.Join(RootDir, EntryReadFromDir.Name())
+		ext := strings.ToLower(filepath.Ext(entry.Name()))
+		if ext == ".md" || ext == ".pdf" || ext == ".h" {
+			destPath := filepath.Join(destDir, entry.Name())
 
-			if Path == DestinationPath {
+			if Path == destPath {
 				return nil
 			}
 
-			return copyFile(Path, DestinationPath)
+			return copyFile(Path, destPath)
 		}
 		return nil
 	})
@@ -69,15 +69,25 @@ func unzip(Source string, Destination string) error {
 	}
 	defer ZipFile.Close()
 
+	// Resolve destination to clean absolute path for Zip Slip protection
+	destAbs, err := filepath.Abs(Destination)
+	if err != nil {
+		return fmt.Errorf("failed to resolve destination path: %w", err)
+	}
+
 	for _, File := range ZipFile.File {
-		FilePathNotThePackage := filepath.Join(Destination, File.Name)
+		// Prevent Zip Slip: ensure extracted path stays within destination
+		targetPath := filepath.Join(destAbs, File.Name)
+		if !strings.HasPrefix(filepath.Clean(targetPath), destAbs+string(os.PathSeparator)) && targetPath != destAbs {
+			return fmt.Errorf("illegal file path in zip: %s", File.Name)
+		}
 
 		if File.FileInfo().IsDir() {
-			_ = os.MkdirAll(FilePathNotThePackage, os.ModePerm)
+			_ = os.MkdirAll(targetPath, os.ModePerm)
 			continue
 		}
 
-		if err := os.MkdirAll(filepath.Dir(FilePathNotThePackage), os.ModePerm); err != nil {
+		if err := os.MkdirAll(filepath.Dir(targetPath), os.ModePerm); err != nil {
 			return err
 		}
 
@@ -86,48 +96,32 @@ func unzip(Source string, Destination string) error {
 			return err
 		}
 
-		DestinationFile, err := os.Create(FilePathNotThePackage)
+		DestinationFile, err := os.Create(targetPath)
 		if err != nil {
+			SourceFile.Close()
 			return err
 		}
 
 		_, err = io.Copy(DestinationFile, SourceFile)
+		SourceFile.Close()
+		DestinationFile.Close()
 		if err != nil {
 			return err
 		}
-
-		_ = SourceFile.Close()
-		_ = DestinationFile.Close()
 	}
 
 	return nil
 }
 
 func createCodeBlocksProject(ProjectName string) {
-	XMLCodeBlocksProjectFile := fmt.Sprintf(internal.XMLCBPStruct, ProjectName, ProjectName, ProjectName)
-
 	codeBlocksFilename := fmt.Sprintf("%s.cbp", ProjectName)
-	File, err := os.Create(codeBlocksFilename)
-	if err != nil {
-		internal.LogError(fmt.Errorf("error creating .cbp file: %v", err))
-		return
-	}
-	defer File.Close()
-
-	writeFile(codeBlocksFilename, XMLCodeBlocksProjectFile)
+	content := fmt.Sprintf(internal.XMLCBPStruct, ProjectName, ProjectName, ProjectName)
+	writeFile(codeBlocksFilename, content)
 }
 
 func createCMakeProjectFile(ProjectName string) {
-	CMakeProjectFileTXT := fmt.Sprintf(internal.CMAKEStruct, ProjectName, ProjectName)
-
-	File, err := os.Create(internal.CMakeFilename)
-	if err != nil {
-		internal.LogError(fmt.Errorf("error creating \"CMakeLists.txt\": %v", err))
-		return
-	}
-	defer File.Close()
-
-	writeFile(internal.CMakeFilename, CMakeProjectFileTXT)
+	content := fmt.Sprintf(internal.CMAKEStruct, ProjectName, ProjectName)
+	writeFile(internal.CMakeFilename, content)
 }
 
 func createSourceFile(cwd, language string) {
@@ -138,7 +132,8 @@ func createSourceFile(cwd, language string) {
 	writeFile(sourcePath, program)
 }
 
-// 0-C 1-CPP 2-GO 3-Kotlin 4-JS 5-PAS 6-PHP 7-Python 8-Rust
+// Maps Kilonova language identifiers to HelloWorld template programs.
+// See internal.HelloWorldPrograms for the template array.
 func getProgramByLanguage(language string) (program, extension string) {
 	switch language {
 	case "c":

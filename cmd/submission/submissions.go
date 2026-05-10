@@ -54,11 +54,10 @@ func printSubmissions(ProblemID, UserID string, FirstPage, LastPage int) {
 
 	var DataSubmissions SubmissionList
 	var Rows []table.Row
-	var count = -1
 	startOffset := (FirstPage - 1) * 50
-	endOffset := max((LastPage-1)*50, 50)
+	endOffset := LastPage * 50
 
-	for OffSet := max(startOffset, 0); (OffSet < count || count < 0) && OffSet < endOffset; OffSet += 50 {
+	for OffSet := startOffset; OffSet < endOffset; OffSet += 50 {
 		url := getSubmissionURL(UserID, ProblemID, OffSet)
 
 		ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestFormAuth)
@@ -72,23 +71,29 @@ func printSubmissions(ProblemID, UserID string, FirstPage, LastPage int) {
 			continue
 		}
 
-		count = DataSubmissions.Data.Count
+		submissions := DataSubmissions.Data.Submissions
+		totalCount := DataSubmissions.Data.Count
 
-		for _, problem := range DataSubmissions.Data.Submissions {
-			formattedTime, err := internal.ParseTime(problem.CreatedAt)
+		for _, sub := range submissions {
+			formattedTime, err := internal.ParseTime(sub.CreatedAt)
 			if err != nil {
 				internal.LogError(err)
 				continue
 			}
 
 			Rows = append(Rows, table.Row{
-				fmt.Sprintf("%d", problem.ProblemID),
-				fmt.Sprintf("%d", problem.UserID),
-				fmt.Sprintf("%d", problem.Id),
+				fmt.Sprintf("%d", sub.ProblemID),
+				fmt.Sprintf("%d", sub.UserID),
+				fmt.Sprintf("%d", sub.Id),
 				formattedTime,
-				problem.Language,
-				fmt.Sprintf("%.0f", problem.Score),
+				sub.Language,
+				fmt.Sprintf("%.0f", sub.Score),
 			})
+		}
+
+		// Stop early if we've fetched all available submissions
+		if OffSet+50 >= totalCount {
+			break
 		}
 	}
 

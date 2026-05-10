@@ -76,7 +76,7 @@ func printDetailsSubmission(submissionId string) {
 	}
 
 	ProblemID := strconv.Itoa(details.Data.ProblemID)
-	fmt.Println(problem.GetProblemInfoText(ProblemID))
+	fmt.Println(problem.GetProblemInfoText(ProblemID, true))
 
 	code, err := b64.StdEncoding.DecodeString(details.Data.Code)
 	if err != nil {
@@ -146,43 +146,48 @@ func formatCodeOutput(code string, lang string) string {
 	var highlightedCode string
 
 	lines := strings.Split(code, "\n")
-	var printHl = color.New(color.Reset).SprintFunc()
 	for lineN, l := range lines {
+		lineMatches := matches[lineN]
 		for colN, c := range l {
-
-			if group, ok := matches[lineN][colN]; ok {
-				if group == highlight.Groups["statement"] {
-					printHl = color.New(color.FgGreen).SprintFunc()
-				} else if group == highlight.Groups["preproc"] {
-					printHl = color.New(color.FgHiRed).SprintFunc()
-				} else if group == highlight.Groups["identifier"] {
-					printHl = color.New(color.FgRed).SprintFunc()
-				} else if group == highlight.Groups["function"] {
-					printHl = color.New(color.FgBlue).SprintFunc()
-				} else if group == highlight.Groups["constant.string"] {
-					printHl = color.New(color.FgHiCyan).SprintFunc()
-				} else if group == highlight.Groups["constant.specialChar"] {
-					printHl = color.New(color.FgHiMagenta).SprintFunc()
-				} else if group == highlight.Groups["constant.number"] {
-					printHl = color.New(color.FgHiBlue).SprintFunc()
-				} else if group == highlight.Groups["constant.bool"] {
-					printHl = color.New(color.FgHiBlue).SprintFunc()
-				} else if group == highlight.Groups["symbol.brackets"] {
-					printHl = color.New(color.FgRed).SprintFunc()
-				} else if group == highlight.Groups["type"] {
-					printHl = color.New(color.FgYellow).SprintFunc()
-				} else if group == highlight.Groups["comment"] {
-					printHl = color.New(color.FgHiBlack).SprintFunc()
-				} else {
-					printHl = color.New(color.Reset).SprintFunc()
+			printHl := color.New(color.Reset).SprintFunc()
+			if lineMatches != nil {
+				if group, ok := lineMatches[colN]; ok {
+					printHl = groupToColor(group)
 				}
 			}
-
 			highlightedCode += printHl(string(c))
 		}
-
 		highlightedCode += "\n"
 	}
 
 	return highlightedCode
+}
+
+func groupToColor(group highlight.Group) func(a ...interface{}) string {
+	switch group {
+	case highlight.Groups["statement"]:
+		return color.New(color.FgGreen).SprintFunc()
+	case highlight.Groups["preproc"]:
+		return color.New(color.FgHiRed).SprintFunc()
+	case highlight.Groups["identifier"]:
+		return color.New(color.FgRed).SprintFunc()
+	case highlight.Groups["function"]:
+		return color.New(color.FgBlue).SprintFunc()
+	case highlight.Groups["constant.string"]:
+		return color.New(color.FgHiCyan).SprintFunc()
+	case highlight.Groups["constant.specialChar"]:
+		return color.New(color.FgHiMagenta).SprintFunc()
+	case highlight.Groups["constant.number"]:
+		return color.New(color.FgHiBlue).SprintFunc()
+	case highlight.Groups["constant.bool"]:
+		return color.New(color.FgHiBlue).SprintFunc()
+	case highlight.Groups["symbol.brackets"]:
+		return color.New(color.FgRed).SprintFunc()
+	case highlight.Groups["type"]:
+		return color.New(color.FgYellow).SprintFunc()
+	case highlight.Groups["comment"]:
+		return color.New(color.FgHiBlack).SprintFunc()
+	default:
+		return color.New(color.Reset).SprintFunc()
+	}
 }

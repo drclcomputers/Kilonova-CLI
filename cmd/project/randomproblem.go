@@ -6,6 +6,7 @@
 package project
 
 import (
+	"database/sql"
 	"fmt"
 	"kncli/internal"
 	"math/rand/v2"
@@ -16,23 +17,37 @@ import (
 var GetRandPbCmd = &cobra.Command{
 	Use:   "random",
 	Short: "Get random problem to solve.",
-	Args:  cobra.ExactArgs(0),
+	Args:  cobra.NoArgs,
 	Run: func(cmd *cobra.Command, args []string) {
 		getRandomProblemID()
 	},
 }
 
-func ProblemCount() int {
-	return internal.CountProblemsDB()
-}
-
 func getRandomProblemID() {
-	count := ProblemCount()
-	if count == 0 {
+	db := internal.DBOpen()
+	if db == nil {
+		fmt.Println("Problem database not available. Run 'database create' first.")
+		return
+	}
+	defer internal.DBClose()
+
+	var count int
+	if err := db.QueryRow("SELECT COUNT(*) FROM problems").Scan(&count); err != nil || count == 0 {
 		fmt.Println("No problems available in the database.")
 		return
 	}
 
-	randomID := rand.IntN(count) + 1
-	fmt.Printf("Your random problem's ID: #%d\n", randomID)
+	offset := rand.IntN(count)
+	var id int
+	var name string
+	if err := db.QueryRow("SELECT id, name FROM problems LIMIT 1 OFFSET ?", offset).Scan(&id, &name); err != nil {
+		if err == sql.ErrNoRows {
+			fmt.Println("No problems available.")
+		} else {
+			internal.LogError(fmt.Errorf("failed to get random problem: %w", err))
+		}
+		return
+	}
+
+	fmt.Printf("Your random problem: #%d — %s\n", id, name)
 }

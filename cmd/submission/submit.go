@@ -14,6 +14,7 @@ import (
 	"mime/multipart"
 	"os"
 	"strconv"
+	"time"
 
 	"github.com/charmbracelet/huh/spinner"
 )
@@ -108,10 +109,11 @@ func handleSubmissionError(ResponseBody []byte) {
 
 func checkSubmissionStatus(submissionID int) {
 	url := fmt.Sprintf(internal.URL_LATEST_SUBMISSION, strconv.Itoa(submissionID))
+	const maxAttempts = 60
 
 	action := func() {
 		var dataLatestSubmit LatestSubmission
-		for {
+		for attempt := 0; attempt < maxAttempts; attempt++ {
 			ResponseBody, err := internal.MakeGetRequest(url, nil, internal.RequestNone)
 			if err != nil {
 				internal.LogError(fmt.Errorf("failed to get submission status: %w", err))
@@ -128,6 +130,7 @@ func checkSubmissionStatus(submissionID int) {
 			}
 
 			fmt.Print(".")
+			time.Sleep(500 * time.Millisecond)
 		}
 
 		if dataLatestSubmit.Data.CompileError {

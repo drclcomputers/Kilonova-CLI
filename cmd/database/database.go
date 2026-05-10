@@ -16,7 +16,6 @@ import (
 	"kncli/cmd/problems"
 	"kncli/internal"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
 	"time"
@@ -70,6 +69,11 @@ func init() {
 
 func CreateDB() {
 	db := internal.DBOpen()
+	if db == nil {
+		internal.LogError(fmt.Errorf("database is not available"))
+		return
+	}
+	defer internal.DBClose()
 
 	createProblemTableSQL := `CREATE TABLE IF NOT EXISTS problems (
 id INTEGER PRIMARY KEY,
@@ -83,9 +87,8 @@ statement TEXT
 	_, err := db.Exec(createProblemTableSQL)
 	if err != nil {
 		internal.LogError(err)
+		return
 	}
-
-	internal.DBClose(db)
 
 	println("Database created successfully.")
 
@@ -114,35 +117,65 @@ func refreshDB() {
 	}
 
 	url := fmt.Sprintf(internal.URL_PROBLEM, "get")
-	data, err := internal.PostJSON[internal.ProblemList](url, nil)
+	data, err := internal.PostJSON[internal.ProblemList](url, struct{}{})
 	if err != nil {
 		internal.LogError(err)
+		return
 	}
 
 	db := internal.DBOpen()
+	if db == nil {
+		internal.LogError(fmt.Errorf("database is not available"))
+		return
+	}
+	defer internal.DBClose()
+
+	tx, err := db.Begin()
+	if err != nil {
+		internal.LogError(fmt.Errorf("failed to begin database refresh transaction: %w", err))
+		return
+	}
+	committed := false
+	defer func() {
+		if !committed {
+			_ = tx.Rollback()
+		}
+	}()
+
+	existsStmt, err := tx.Prepare(`SELECT EXISTS(SELECT 1 FROM problems WHERE id = ?)`)
+	if err != nil {
+		internal.LogError(fmt.Errorf("failed to prepare existence query: %w", err))
+		return
+	}
+	defer existsStmt.Close()
+
+	insertStmt, err := tx.Prepare(`INSERT INTO problems (id, name, sourcesize, timelimit, memorylimit, credits, statement)
+ VALUES ($1, $2, $3, $4, $5, $6, $7)
+ON CONFLICT (id) DO NOTHING;`)
+	if err != nil {
+		internal.LogError(fmt.Errorf("failed to prepare insert query: %w", err))
+		return
+	}
+	defer insertStmt.Close()
 
 	for _, problem := range data.Data {
-		query := `SELECT EXISTS(SELECT 1 FROM problems WHERE id = ?)`
 		var exists bool
-		err := db.QueryRow(query, problem.Id).Scan(&exists)
+		err := existsStmt.QueryRow(problem.Id).Scan(&exists)
 		if err != nil {
 			internal.LogError(err)
+			continue
 		}
 
 		if exists {
 			continue
 		}
 
-		statement := problems.GetStatementOnline(strconv.Itoa(problem.Id), "RO", 2)
+		statement := problems.GetStatementOnlineQuiet(strconv.Itoa(problem.Id), "RO", 2)
 		if statement == internal.NOLANG {
-			statement = problems.GetStatementOnline(strconv.Itoa(problem.Id), "EN", 2)
+			statement = problems.GetStatementOnlineQuiet(strconv.Itoa(problem.Id), "EN", 2)
 		}
 
-		insertSQL := `INSERT INTO problems (id, name, sourcesize, timelimit, memorylimit, credits, statement)
- VALUES ($1, $2, $3, $4, $5, $6, $7)
-ON CONFLICT (id) DO NOTHING;`
-
-		_, err = db.Exec(insertSQL, problem.Id, problem.Name, problem.SourceSize,
+		_, err = insertStmt.Exec(problem.Id, problem.Name, problem.SourceSize,
 			problem.Time, problem.MemoryLimit, problem.SourceCredits, statement)
 		if err != nil {
 			internal.LogError(fmt.Errorf("error inserting problem info: %v", err))
@@ -150,26 +183,17 @@ ON CONFLICT (id) DO NOTHING;`
 
 	}
 
-	internal.DBClose(db)
+	if err := tx.Commit(); err != nil {
+		internal.LogError(fmt.Errorf("failed to commit database refresh transaction: %w", err))
+		return
+	}
+	committed = true
 
 	currentTime := time.Now()
-	filePath := path.Join(internal.GetConfigDir(), internal.LASTREFRESHDB)
+	filePath := filepath.Join(internal.GetConfigDir(), internal.LASTREFRESHDB)
 	layout := time.RFC3339
 
-	if !internal.FileExists(internal.LASTREFRESHDB) {
-		_, err := os.Create(filePath)
-		if err != nil {
-			internal.LogError(err)
-		}
-	}
-
-	file, err := os.OpenFile(filePath, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0644)
-	if err != nil {
-		internal.LogError(err)
-	}
-
-	_, err = file.WriteString(currentTime.Format(layout))
-	if err != nil {
+	if err := os.WriteFile(filePath, []byte(currentTime.Format(layout)), 0644); err != nil {
 		internal.LogError(err)
 	}
 

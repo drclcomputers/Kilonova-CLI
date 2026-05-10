@@ -52,11 +52,18 @@ func init() {
 	modifyInfoContestCmd.AddCommand(modifyPublicLeaderboardContestCmd)
 }
 
-type ContestData struct {
+type ContestAnnouncementData struct {
 	Status string `json:"status"`
 	Data   []struct {
-		Text     string `json:"text"`
-		Time     string `json:"created_at"`
+		Text string `json:"text"`
+		Time string `json:"created_at"`
+		ID   int    `json:"id"`
+	}
+}
+
+type ContestProblemsData struct {
+	Status string `json:"status"`
+	Data   []struct {
 		ID       int    `json:"id"`
 		Name     string `json:"name"`
 		MaxScore int    `json:"max_score"`
@@ -212,7 +219,7 @@ func showProblems(contestID string) {
 		internal.LogError(err)
 		return
 	}
-	var data ContestData
+	var data ContestProblemsData
 	if err = json.Unmarshal(body, &data); err != nil {
 		internal.LogError(err)
 		return
